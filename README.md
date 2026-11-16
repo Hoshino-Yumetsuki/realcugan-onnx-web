@@ -104,17 +104,29 @@ resized placeholders.
 
 Publish the **entire `dist/` directory**, including `assets/`, `ort-runtime/` and
 `models/`, on any static HTTP host. Relative build URLs support subdirectory
-hosting. Serve `.wasm` as `application/wasm`, `.mjs` as JavaScript and `.onnx` as
-`application/octet-stream`. Runtime files are copied from the installed ONNX
-Runtime version during the Vite build; keep them with the matching app bundle
-and revalidate `index.html` / `ort-runtime/` when publishing. Versioned model URLs
-may use long-lived caching. All inference resources are served by the deployment;
-no external model host or CORS configuration is required.
+hosting. Serve `.wasm.gz` as `application/gzip`, `.mjs` as JavaScript and `.onnx` as
+`application/octet-stream`. Do not add `Content-Encoding: gzip` to the `.wasm.gz`
+response: it is a gzip file that the browser worker explicitly decompresses with
+`DecompressionStream` before supplying ONNX Runtime's `wasmBinary` option.
+The runtime is initialized once per worker and reused by both CPU and WebGPU sessions.
+This adds a decompression step and uses buffered rather than streaming WASM compilation.
+
+Vite compresses the official WASM from the installed ONNX Runtime package during
+development/build and copies its matching `.mjs`; no uncompressed `.wasm` is published.
+Keep both runtime files with the matching app bundle and revalidate `index.html` /
+`ort-runtime/` when publishing. Versioned model URLs may use long-lived caching.
+All inference resources are served by the deployment; no external model host or
+CORS configuration is required.
+
+Cloudflare Workers Static Assets has a [25 MiB per-file limit](https://developers.cloudflare.com/workers/platform/limits/#static-assets)
+on both free and paid plans. The current gzip runtime is approximately 6.8 MiB
+(27.4 MiB uncompressed), so the full `dist/` directory fits the per-file limit without
+R2, an external CDN or a server-side decompression worker.
 Do not open `index.html` via `file://`.
 
 The previous native build chain, bundled native models and legacy workers have
-been removed. The remaining `.wasm` files belong to the official ONNX Runtime Web
-package: they host GPU graph loading/scheduling and execute models in CPU mode.
+been removed. The compressed `.wasm.gz` payload belongs to the official ONNX Runtime
+Web package: it hosts GPU graph loading/scheduling and executes models in CPU mode.
 
 ## Credits
 

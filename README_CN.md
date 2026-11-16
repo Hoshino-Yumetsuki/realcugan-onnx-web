@@ -95,14 +95,23 @@ JavaScript 将浮点输出打包为 PNG 字节。会话固定输入尺寸以常�
 
 将**整个 `dist/` 目录**部署到任意静态 HTTP 服务，必须包含 `assets/`、
 `ort-runtime/` 和 `models/`。构建使用相对路径，支持部署到子目录。
-`.wasm` 使用 `application/wasm` MIME，`.mjs` 使用 JavaScript MIME，
-`.onnx` 使用 `application/octet-stream` MIME。Vite 会从安装的 ONNX Runtime 包中
-复制对应版本的运行时文件，发布时必须与应用一起更新；`index.html` 和
+`.wasm.gz` 使用 `application/gzip` MIME，`.mjs` 使用 JavaScript MIME，
+`.onnx` 使用 `application/octet-stream` MIME。不要给 `.wasm.gz` 响应额外设置
+`Content-Encoding: gzip`：浏览器 Worker 会通过原生 `DecompressionStream` 解压文件，
+再交给 ONNX Runtime 的 `wasmBinary` 选项加载。每个 Worker 只初始化一次运行时，
+CPU 与 WebGPU 会话共同复用。初始化会多一步解压，并使用缓冲区而非流式 WASM 编译。
+
+Vite 在开发和构建时压缩已安装 ONNX Runtime 包中的官方 WASM，并复制配套 `.mjs`，
+不再发布未压缩的 `.wasm`。运行时文件必须与应用一起更新；`index.html` 和
 `ort-runtime/` 应重新验证缓存，版本化模型 URL 可使用长期缓存。
 推理资源全部由部署站点提供，无需外部模型服务或跨域配置。
+
+Cloudflare Workers Static Assets 的[单文件上限为 25 MiB](https://developers.cloudflare.com/workers/platform/limits/#static-assets)，
+免费和付费套餐相同。当前运行时压缩后约 6.8 MiB（解压后约 27.4 MiB），
+可以直接部署完整 `dist/`，无需 R2、外部 CDN 或服务端解压 Worker。
 不要通过 `file://` 直接打开页面。
 
-旧原生构建链、本地原生模型与旧 Worker 均已移除。保留的 `.wasm` 来自官方
+旧原生构建链、本地原生模型与旧 Worker 均已移除。压缩后的 `.wasm.gz` 来自官方
 ONNX Runtime Web 包，用于 GPU 图加载和调度，以及 CPU 模式下的模型推理。
 
 ## 致谢

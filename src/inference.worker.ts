@@ -10,6 +10,7 @@ let sessionKey = ""
 let modelBytes: { id: string; bytes: Uint8Array } | undefined
 let busy = false
 let assetBaseUrl = ""
+let wasmInitialized = false
 
 function progress(stage: Progress["stage"], completed = 0, total = 0): void {
   scope.postMessage({
@@ -69,14 +70,29 @@ async function loadSession(
   }
   if (modelBytes?.id !== model.id) modelBytes = { id: model.id, bytes: await download(model) }
   progress("initialize")
-  session = await ort.InferenceSession.create(modelBytes.bytes, {
-    executionProviders: [backend],
-    // Fail rather than silently assigning unsupported WebGPU nodes to the CPU.
-    ...(backend === "webgpu" ? { extra: { session: { disable_cpu_ep_fallback: "1" } } } : {}),
-    // Fold shape/padding arithmetic at compile time instead of assigning it to the CPU.
-    freeDimensionOverrides: { batch: 1, image_height: height, image_width: width },
-    graphOptimizationLevel: "all"
-  })
+  if (!wasmInitialized) {
+    const response = await fetch(
+      new URL("ort-runtime/ort-wasm-simd-threaded.asyncify.wasm.gz", assetBaseUrl)
+    )
+    if (!response.ok) throw new Error(`ONNX runtime download failed: HTTP ${response.status}.`)
+    if (!response.body) throw new Error("Unable to read ONNX runtime download.")
+    const stream = response.body.pipeThrough(new DecompressionStream("gzip"))
+    ort.env.wasm.wasmBinary = await new Response(stream).arrayBuffer()
+  }
+  try {
+    session = await ort.InferenceSession.create(modelBytes.bytes, {
+      executionProviders: [backend],
+      // Fail rather than silently assigning unsupported WebGPU nodes to the CPU.
+      ...(backend === "webgpu" ? { extra: { session: { disable_cpu_ep_fallback: "1" } } } : {}),
+      // Fold shape/padding arithmetic at compile time instead of assigning it to the CPU.
+      freeDimensionOverrides: { batch: 1, image_height: height, image_width: width },
+      graphOptimizationLevel: "all"
+    })
+    wasmInitialized = true
+  } finally {
+    // The runtime is shared by later sessions; do not retain its decompressed input buffer.
+    ort.env.wasm.wasmBinary = undefined
+  }
   sessionKey = key
   return session
 }
