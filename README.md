@@ -57,8 +57,10 @@ models, explicit backend switching, cancellation, worker recreation and PNG alph
 ZIP packaging uses `@zip.js/zip.js` with stored entries, Unicode filenames and
 collision-safe names. Its native entry adds no compression WASM or worker assets.
 `@thi.ng/pixel` supplies alpha-channel extraction and bilinear sampling; `colord`
-handles color conversions, luminance and contrast. Browser APIs handle image
-decoding, canvas display and PNG encoding; only ONNX tile/tensor conversion is custom.
+handles color conversions, luminance and contrast. `@imagemagick/magick-wasm` handles
+full-resolution decoding, tile assembly and PNG encoding in the same worker without
+Canvas. Display and theme extraction use previews bounded to 1,024 pixels per side;
+downloads and ZIP entries retain the original output resolution.
 
 ## Models and image limits
 
@@ -96,36 +98,41 @@ SHA-256 hashes and does not run during development, build or browser inference.
 Tiles default to 128 input pixels with a 32-pixel context halo. Smaller tiles lower
 memory usage. Real-CUGAN's global SE statistics mean tiled output is not pixel-identical
 to whole-image inference; use full-image mode when that matters and memory permits.
-Output is limited to 16,384 pixels per side and 64 megapixels, with device memory
-potentially imposing a lower limit. Failed runs surface errors rather than returning
-resized placeholders.
+There is no application-level side-length or pixel-count cap. Large images do not
+need to fit a browser canvas; actual limits come from device memory, WebAssembly
+address space and the image codec. Memory warnings remain advisory. Failed runs
+surface errors rather than returning resized placeholders.
 
 ## Static deployment
 
-Publish the **entire `dist/` directory**, including `assets/`, `ort-runtime/` and
-`models/`, on any static HTTP host. Relative build URLs support subdirectory
-hosting. Serve `.wasm.gz` as `application/gzip`, `.mjs` as JavaScript and `.onnx` as
-`application/octet-stream`. Do not add `Content-Encoding: gzip` to the `.wasm.gz`
-response: it is a gzip file that the browser worker explicitly decompresses with
-`DecompressionStream` before supplying ONNX Runtime's `wasmBinary` option.
+Publish the **entire `dist/` directory**, including `assets/`, `ort-runtime/`,
+`image-codec/` and `models/`, on any static HTTP host. Relative build URLs support
+subdirectory hosting. Serve `.wasm.zip` as `application/zip`, `.mjs` as JavaScript
+and `.onnx` as `application/octet-stream`. Both WASM payloads are real ZIP archives
+containing the original binaries. The browser worker extracts them with the existing
+`@zip.js/zip.js` native entry. ONNX Runtime receives its binary via `wasmBinary`;
+ImageMagick receives its binary through `initializeImageMagick`. No separate
+decompression worker or cross-origin isolation headers are required.
 The runtime is initialized once per worker and reused by both CPU and WebGPU sessions.
 This adds a decompression step and uses buffered rather than streaming WASM compilation.
 
-Vite compresses the official WASM from the installed ONNX Runtime package during
-development/build and copies its matching `.mjs`; no uncompressed `.wasm` is published.
-Keep both runtime files with the matching app bundle and revalidate `index.html` /
-`ort-runtime/` when publishing. Versioned model URLs may use long-lived caching.
+Vite packages the official WASM binaries from the installed ONNX Runtime and
+ImageMagick packages into ZIP during development/build and copies ONNX Runtime's
+matching `.mjs`; no uncompressed `.wasm` is published.
+Keep runtime files with the matching app bundle and revalidate `index.html`,
+`ort-runtime/` and `image-codec/` when publishing. Versioned model URLs may use long-lived caching.
 All inference resources are served by the deployment; no external model host or
 CORS configuration is required.
 
 Cloudflare Workers Static Assets has a [25 MiB per-file limit](https://developers.cloudflare.com/workers/platform/limits/#static-assets)
-on both free and paid plans. The current gzip runtime is approximately 6.8 MiB
-(27.4 MiB uncompressed), so the full `dist/` directory fits the per-file limit without
+on both free and paid plans. The current ONNX Runtime ZIP is approximately 6.9 MiB
+and the ImageMagick ZIP is approximately 5.2 MiB, so the full `dist/` directory fits
+the per-file limit without
 R2, an external CDN or a server-side decompression worker.
 Do not open `index.html` via `file://`.
 
 The previous native build chain, bundled native models and legacy workers have
-been removed. The compressed `.wasm.gz` payload belongs to the official ONNX Runtime
+been removed. The `.wasm.zip` payload belongs to the official ONNX Runtime
 Web package: it hosts GPU graph loading/scheduling and executes models in CPU mode.
 
 ## Credits

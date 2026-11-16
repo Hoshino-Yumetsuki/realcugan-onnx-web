@@ -42,6 +42,7 @@ type BatchItem = {
   name: string
   status: "pending" | "processing" | "done" | "error" | "cancelled"
   previewObjectUrl: string
+  outputPreviewObjectUrl: string
   inputWidth: number
   inputHeight: number
   outputWidth: number
@@ -88,6 +89,8 @@ interface WorkspaceState {
   previewPinchStartZoom: number
   uploadImgSrc: string
   uploadObjectUrl: string
+  inputBlob: Blob | null
+  isLoadingPreview: boolean
   uploadPreviewWidth: number
   uploadPreviewHeight: number
   uploadPreviewName: string
@@ -219,6 +222,8 @@ const WorkspaceController = defineComponent({
       previewPinchStartZoom: 100,
       uploadImgSrc: "",
       uploadObjectUrl: "",
+      inputBlob: null,
+      isLoadingPreview: false,
       uploadPreviewWidth: 0,
       uploadPreviewHeight: 0,
       uploadPreviewName: "",
@@ -462,6 +467,7 @@ const WorkspaceController = defineComponent({
   },
 
   beforeUnmount() {
+    this.activeImageId += 1
     if (this.windowResizeHandler) {
       window.removeEventListener("resize", this.windowResizeHandler)
       this.windowResizeHandler = null
@@ -1314,6 +1320,7 @@ const WorkspaceController = defineComponent({
     },
 
     onUploadChange(file: WorkspaceFile, fileList: WorkspaceFile[]) {
+      if (this.isProcessing || this.isBatchProcessing || this.isLoadingPreview) return
       if (!file || !file.raw) {
         return
       }
@@ -1337,64 +1344,68 @@ const WorkspaceController = defineComponent({
     },
 
     readUploadedFile(file: WorkspaceFile | null) {
-      let canvas = document.getElementById("canvas-upload")
-      if (!(canvas instanceof HTMLCanvasElement)) return
-      this.loadImageFileToCanvas(file, canvas)
+      this.isLoadingPreview = true
+      this.loadImageFileToCanvas(file)
         .then(() => {
           this.scheduleStageLayoutSync()
           this.scrollStageIntoView()
           this.progressTip = ""
         })
         .catch((error) => {
+          if (error instanceof Error && error.name === "AbortError") return
           this.clearUploadPreviewUrl()
+          this.inputBlob = null
+          this.uploadPreviewWidth = 0
+          this.uploadPreviewHeight = 0
           this.handleProcessFailure(error || "failed to decode input image")
+        })
+        .finally(() => {
+          this.isLoadingPreview = false
         })
     },
 
-    loadImageFileToCanvas(
-      file: WorkspaceFile | null,
-      canvas: HTMLCanvasElement,
-      options: { keepUploadUrl?: boolean; objectUrl?: string } = {}
-    ) {
-      return new Promise<void>((resolve, reject) => {
-        if (!file || !file.raw) {
-          reject(new Error("missing input file"))
-          return
+    async loadImageFileToCanvas(file: WorkspaceFile | null, item?: BatchItem) {
+      if (!file?.raw) throw new Error("missing input file")
+      const imageId = ++this.activeImageId
+      this.inputBlob = null
+      this.clearUploadPreviewUrl()
+      this.uploadPreviewWidth = 0
+      this.uploadPreviewHeight = 0
+      const preview = await this.imageProcessor.preview(file.raw)
+      if (imageId !== this.activeImageId || this.batchCancelRequested)
+        throw new DOMException("processing cancelled", "AbortError")
+      const url = URL.createObjectURL(preview.blob)
+      const image = new Image()
+      try {
+        image.src = url
+        await image.decode()
+        if (imageId !== this.activeImageId || this.batchCancelRequested)
+          throw new DOMException("processing cancelled", "AbortError")
+        const canvas = document.getElementById("canvas-upload")
+        if (!(canvas instanceof HTMLCanvasElement)) throw new Error("missing upload canvas")
+        canvas.width = image.naturalWidth
+        canvas.height = image.naturalHeight
+        const context = canvas.getContext("2d")
+        if (!context || !canvas.width || !canvas.height)
+          throw new Error("failed to decode input preview")
+        context.drawImage(image, 0, 0)
+        this.applyImageThemeFromCanvas(canvas)
+        this.buildWebReDots(canvas)
+        if (item) {
+          this.applyBatchItemAccentFromCanvas(item, canvas)
+          if (item.previewObjectUrl) URL.revokeObjectURL(item.previewObjectUrl)
+          item.previewObjectUrl = url
         }
-        let ctx = canvas.getContext("2d")
-        if (!ctx) {
-          reject(new Error("failed to get canvas context"))
-          return
-        }
-        if (!options.keepUploadUrl) {
-          this.clearUploadPreviewUrl()
-        }
-        this.uploadObjectUrl = options.objectUrl || URL.createObjectURL(file.raw)
-        this.uploadImgSrc = this.uploadObjectUrl
-        let img = new Image()
-        img.onload = () => {
-          canvas.width = img.naturalWidth || img.width
-          canvas.height = img.naturalHeight || img.height
-          if (!canvas.width || !canvas.height) {
-            // e.g. SVG without intrinsic size: drawImage from a
-            // 0x0 canvas throws later inside theme sampling and
-            // the promise would never settle.
-            reject(new Error("failed to decode input image"))
-            return
-          }
-          ctx.drawImage(img, 0, 0)
-          this.uploadPreviewWidth = canvas.width
-          this.uploadPreviewHeight = canvas.height
-          this.uploadPreviewName = file.name
-          this.applyImageThemeFromCanvas(canvas)
-          this.buildWebReDots(canvas)
-          resolve()
-        }
-        img.onerror = () => {
-          reject(new Error("failed to decode input image"))
-        }
-        img.src = this.uploadObjectUrl
-      })
+        this.inputBlob = file.raw
+        this.uploadObjectUrl = url
+        this.uploadImgSrc = url
+        this.uploadPreviewWidth = preview.width
+        this.uploadPreviewHeight = preview.height
+        this.uploadPreviewName = file.name
+      } catch (error) {
+        URL.revokeObjectURL(url)
+        throw error
+      }
     },
 
     getReadyWipeLines() {
@@ -1409,9 +1420,12 @@ const WorkspaceController = defineComponent({
       if (!this.uploadPreviewWidth || this.isProcessing || this.isProcessDone) {
         return
       }
-      let canvas = document.getElementById("canvas-upload")
-      if (!(canvas instanceof HTMLCanvasElement)) return
-      this.preflightProcess(canvas, canvas.width, canvas.height).catch((error) => {
+      if (!this.inputBlob) return
+      this.preflightProcess(
+        this.inputBlob,
+        this.uploadPreviewWidth,
+        this.uploadPreviewHeight
+      ).catch((error) => {
         // Covers both 'processing cancelled before start' (declined
         // the size-risk dialog) and 'processing cancelled' (user hit
         // cancel mid-run) — neither is a failure to report.
@@ -1454,11 +1468,11 @@ const WorkspaceController = defineComponent({
       sample.height = 0
     },
 
-    startProcessAndWait(sourceCanvas: HTMLCanvasElement, w: number, h: number) {
+    startProcessAndWait(sourceBlob: Blob, w: number, h: number) {
       return new Promise<ProcessResult>((resolve, reject) => {
         this.processCompletionResolve = resolve
         this.processCompletionReject = reject
-        let processPromise = this.process(sourceCanvas, w, h)
+        let processPromise = this.process(sourceBlob, w, h)
         if (processPromise && processPromise.catch) {
           processPromise.catch((error) => {
             this.rejectCurrentProcess(error)
@@ -1518,7 +1532,8 @@ const WorkspaceController = defineComponent({
         file: file,
         name: file.name,
         status: "pending",
-        previewObjectUrl: URL.createObjectURL(file.raw),
+        previewObjectUrl: "",
+        outputPreviewObjectUrl: "",
         inputWidth: 0,
         inputHeight: 0,
         outputWidth: 0,
@@ -1547,8 +1562,6 @@ const WorkspaceController = defineComponent({
         modelType: this.modelTypeRadio
       }
 
-      let canvas = document.getElementById("canvas-upload")
-      if (!(canvas instanceof HTMLCanvasElement)) throw new Error("missing upload canvas")
       for (let index = 0; index < this.batchItems.length; index++) {
         if (this.batchCancelRequested || runId !== this.batchRunId) {
           break
@@ -1568,16 +1581,13 @@ const WorkspaceController = defineComponent({
           name: item.name
         })
         try {
-          await this.loadImageFileToCanvas(item.file, canvas, {
-            keepUploadUrl: true,
-            objectUrl: item.previewObjectUrl
-          })
-          item.inputWidth = canvas.width
-          item.inputHeight = canvas.height
-          this.applyBatchItemAccentFromCanvas(item, canvas)
+          await this.loadImageFileToCanvas(item.file, item)
+          item.inputWidth = this.uploadPreviewWidth
+          item.inputHeight = this.uploadPreviewHeight
           this.scheduleStageLayoutSync()
           this.scrollStageIntoView()
-          await this.preflightProcess(canvas, canvas.width, canvas.height)
+          if (!item.file.raw) throw new Error("missing input file")
+          await this.preflightProcess(item.file.raw, item.inputWidth, item.inputHeight)
           item.status = "done"
         } catch (error) {
           if (this.batchCancelRequested || this.isCancelling) {
@@ -1641,7 +1651,12 @@ const WorkspaceController = defineComponent({
       return filename
     },
 
-    rememberBatchResult(objectUrl: string, outputWidth: number, outputHeight: number) {
+    rememberBatchResult(
+      objectUrl: string,
+      previewUrl: string,
+      outputWidth: number,
+      outputHeight: number
+    ) {
       if (!this.isBatchActive || !this.activeBatchItemId || !objectUrl) {
         return
       }
@@ -1650,6 +1665,9 @@ const WorkspaceController = defineComponent({
         return
       }
       item.filename = this.getOutputFilename()
+      if (item.objectUrl) URL.revokeObjectURL(item.objectUrl)
+      if (item.outputPreviewObjectUrl) URL.revokeObjectURL(item.outputPreviewObjectUrl)
+      item.outputPreviewObjectUrl = previewUrl
       item.objectUrl = objectUrl
       item.outputWidth = outputWidth || this.outputPreviewWidth
       item.outputHeight = outputHeight || this.outputPreviewHeight
@@ -1659,7 +1677,7 @@ const WorkspaceController = defineComponent({
     },
 
     selectBatchItem(item: BatchItem) {
-      if (!item) {
+      if (!item || this.isBatchProcessing) {
         return
       }
       this.selectedBatchItemId = item.id
@@ -1671,6 +1689,7 @@ const WorkspaceController = defineComponent({
       this.uploadPreviewHeight = item.inputHeight
       this.uploadImgSrc = item.previewObjectUrl || ""
       this.uploadObjectUrl = item.previewObjectUrl || ""
+      this.inputBlob = item.file.raw || null
       this.outputScale = item.outputScale || this.scaleRadio
       // outputScale doubles as the "has a stored result" sentinel
       // (0 until processed): plain `||` would drop denoise 0 ("none")
@@ -1679,7 +1698,7 @@ const WorkspaceController = defineComponent({
       this.outputModelType = item.outputModelType || this.modelTypeRadio
       this.outputPreviewWidth = item.outputWidth || item.inputWidth * this.outputScale
       this.outputPreviewHeight = item.outputHeight || item.inputHeight * this.outputScale
-      this.outputImgSrc = item.objectUrl || ""
+      this.outputImgSrc = item.outputPreviewObjectUrl || ""
       this.outputObjectUrl = item.objectUrl || ""
       this.isProcessDone = item.status === "done" && !!item.objectUrl
       this.isResultRevealing = false
@@ -1713,19 +1732,14 @@ const WorkspaceController = defineComponent({
         total: 1,
         name: item.name
       })
-      let canvas = document.getElementById("canvas-upload")
-      if (!(canvas instanceof HTMLCanvasElement)) throw new Error("missing upload canvas")
       try {
-        await this.loadImageFileToCanvas(item.file, canvas, {
-          keepUploadUrl: true,
-          objectUrl: item.previewObjectUrl
-        })
-        item.inputWidth = canvas.width
-        item.inputHeight = canvas.height
-        this.applyBatchItemAccentFromCanvas(item, canvas)
+        await this.loadImageFileToCanvas(item.file, item)
+        item.inputWidth = this.uploadPreviewWidth
+        item.inputHeight = this.uploadPreviewHeight
         this.scheduleStageLayoutSync()
         this.scrollStageIntoView()
-        await this.preflightProcess(canvas, canvas.width, canvas.height)
+        if (!item.file.raw) throw new Error("missing input file")
+        await this.preflightProcess(item.file.raw, item.inputWidth, item.inputHeight)
         item.status = "done"
       } catch (error) {
         item.status = this.isCancelling || this.batchCancelRequested ? "cancelled" : "error"
@@ -1884,55 +1898,14 @@ const WorkspaceController = defineComponent({
       }
     },
 
-    preflightProcess(
-      sourceCanvas: HTMLCanvasElement,
-      w: number,
-      h: number
-    ): Promise<ProcessResult> {
+    preflightProcess(sourceBlob: Blob, w: number, h: number): Promise<ProcessResult> {
       let risk = this.getProcessingRisk(w, h, this.scaleRadio)
-      let outputPixels = w * this.scaleRadio * (h * this.scaleRadio)
-      let overCanvasLimit =
-        outputPixels > this.getCanvasPixelLimit() || w * h > this.getCanvasPixelLimit()
-      if (this.isBatchProcessing) {
-        // Batch runs unattended: never show per-item dialogs. Items
-        // over the hard canvas limit fail (guaranteed-corrupt output);
-        // warn-level items proceed as if the user chose "continue".
-        if (overCanvasLimit) {
-          return Promise.reject(new Error("image exceeds platform canvas limit"))
-        }
-        return this.startProcessAndWait(sourceCanvas, w, h)
-      }
-      if (overCanvasLimit) {
-        // Hard block: above the platform canvas limit the output is
-        // guaranteed corrupt, so "continue anyway" must not be offered.
-        return ElMessageBox.confirm(
-          this.getSizeRiskMessageHtml(risk),
-          this.t("dialog.sizeRiskTitle"),
-          {
-            confirmButtonText: this.t("dialog.safeSettings"),
-            cancelButtonText: this.t("dialog.ok"),
-            type: "error",
-            dangerouslyUseHTMLString: true,
-            showCancelButton: true
-          }
-        )
-          .then(() => {
-            this.applySafeProcessingSettings()
-            if (w * this.scaleRadio * (h * this.scaleRadio) > this.getCanvasPixelLimit()) {
-              // Even SE / 2X still exceeds the limit — the input is too large.
-              throw new Error("processing cancelled before start")
-            }
-            return this.startProcessAndWait(sourceCanvas, w, h)
-          })
-          .catch((error) => {
-            if (error instanceof Error) {
-              throw error
-            }
-            throw new Error("processing cancelled before start")
-          })
-      }
-      if (risk.level === "ok" || this.getPreference("skipSizeRiskWarning") === "1") {
-        return this.startProcessAndWait(sourceCanvas, w, h)
+      if (
+        this.isBatchProcessing ||
+        risk.level === "ok" ||
+        this.getPreference("skipSizeRiskWarning") === "1"
+      ) {
+        return this.startProcessAndWait(sourceBlob, w, h)
       }
       let skipWarning = false
       return ElMessageBox.confirm(
@@ -1956,14 +1929,14 @@ const WorkspaceController = defineComponent({
             this.savePreference("skipSizeRiskWarning", "1")
           }
           this.applySafeProcessingSettings()
-          return this.startProcessAndWait(sourceCanvas, w, h)
+          return this.startProcessAndWait(sourceBlob, w, h)
         })
         .catch((action) => {
           if (skipWarning) {
             this.savePreference("skipSizeRiskWarning", "1")
           }
           if (action === "cancel") {
-            return this.startProcessAndWait(sourceCanvas, w, h)
+            return this.startProcessAndWait(sourceBlob, w, h)
           }
           throw new Error("processing cancelled before start")
         })
@@ -1997,11 +1970,6 @@ const WorkspaceController = defineComponent({
       // Safari never implements navigator.deviceMemory; without the clamp
       // iOS devices would default to 8 GiB and skip every memory warning.
       return this.isIOSDevice() ? Math.min(clamped, 4) : clamped
-    },
-
-    getCanvasPixelLimit() {
-      // iOS Safari silently blanks canvases above ~16.7M px (4096x4096).
-      return this.isIOSDevice() ? 16777216 : Infinity
     },
 
     scrollStageIntoView() {
@@ -2051,14 +2019,10 @@ const WorkspaceController = defineComponent({
         risk.level === "block"
           ? this.t("dialog.sizeRiskBlockText", risk)
           : this.t("dialog.sizeRiskText", risk)
-      // No skip checkbox on hard blocks: that dialog has no
-      // beforeClose reading it, and a hard block must not be skippable.
       let skipHtml =
-        risk.level === "block"
-          ? ""
-          : '<label class="size-risk-skip"><input id="size-risk-skip-checkbox" type="checkbox"> ' +
-            this.escapeHtml(this.t("dialog.dontShowAgain")) +
-            "</label>"
+        '<label class="size-risk-skip"><input id="size-risk-skip-checkbox" type="checkbox"> ' +
+        this.escapeHtml(this.t("dialog.dontShowAgain")) +
+        "</label>"
       return (
         '<div class="size-risk-dialog-text">' +
         "<p>" +
@@ -2097,11 +2061,7 @@ const WorkspaceController = defineComponent({
         Math.max((isMobileDevice ? 1100 : 1700) * 1024 * 1024, practicalBudgetBytes)
       )
       let level = "ok"
-      if (outputPixels > this.getCanvasPixelLimit() || inputPixels > this.getCanvasPixelLimit()) {
-        // Above the platform canvas limit the output canvas silently
-        // renders blank, so the export would be corrupt regardless of memory.
-        level = "block"
-      } else if (estimatedBytes >= blockBytes) {
+      if (estimatedBytes >= blockBytes) {
         level = "block"
       } else if (estimatedBytes >= warnBytes) {
         level = "warn"
@@ -2117,7 +2077,7 @@ const WorkspaceController = defineComponent({
       }
     },
 
-    async process(sourceCanvas: HTMLCanvasElement, w: number, h: number) {
+    async process(sourceBlob: Blob, w: number, h: number) {
       const imageId = ++this.activeImageId
       const started = performance.now()
       this.progressTip = this.t("progress.starting")
@@ -2158,16 +2118,10 @@ const WorkspaceController = defineComponent({
             entry.noise === noise
         )
         if (!model) throw new Error("model not found")
-        const blob = await new Promise<Blob>((resolve, reject) =>
-          sourceCanvas.toBlob(
-            (value) => (value ? resolve(value) : reject(new Error("failed to encode input image"))),
-            "image/png"
-          )
-        )
         if (imageId !== this.activeImageId || this.isCancelling)
           throw new DOMException("processing cancelled", "AbortError")
         const result = await this.imageProcessor.process(
-          blob,
+          sourceBlob,
           { modelId: model.id, tileSize: 128, backend: this.backendMode },
           (progress) => {
             const percent = progress.total
@@ -2398,8 +2352,8 @@ const WorkspaceController = defineComponent({
         1
       )
       return {
-        width: Math.floor(this.uploadPreviewWidth * ratio),
-        height: Math.floor(this.uploadPreviewHeight * ratio)
+        width: Math.max(1, Math.floor(this.uploadPreviewWidth * ratio)),
+        height: Math.max(1, Math.floor(this.uploadPreviewHeight * ratio))
       }
     },
 
@@ -2442,10 +2396,10 @@ const WorkspaceController = defineComponent({
       let baseSize = this.getPreviewSize()
       let zoomRatio = this.previewZoom / 100
       return {
-        originImgWidth: Math.floor(baseSize.originImgWidth * zoomRatio),
-        originImgHeight: Math.floor(baseSize.originImgHeight * zoomRatio),
-        outputImgWidth: Math.floor(baseSize.outputImgWidth * zoomRatio),
-        outputImgHeight: Math.floor(baseSize.outputImgHeight * zoomRatio)
+        originImgWidth: Math.max(1, Math.floor(baseSize.originImgWidth * zoomRatio)),
+        originImgHeight: Math.max(1, Math.floor(baseSize.originImgHeight * zoomRatio)),
+        outputImgWidth: Math.max(1, Math.floor(baseSize.outputImgWidth * zoomRatio)),
+        outputImgHeight: Math.max(1, Math.floor(baseSize.outputImgHeight * zoomRatio))
       }
     },
 
@@ -2822,39 +2776,17 @@ const WorkspaceController = defineComponent({
     },
 
     async onProcessEnd(cost: number, blob: Blob, imageId: number) {
+      const preview = await this.imageProcessor.preview(blob)
+      if (imageId !== this.activeImageId || this.isCancelling)
+        throw new DOMException("processing cancelled", "AbortError")
       const url = URL.createObjectURL(blob)
-      const image = new Image()
-      try {
-        await new Promise<void>((resolve, reject) => {
-          image.onload = () => resolve()
-          image.onerror = () => reject(new Error("failed to decode output image"))
-          image.src = url
-        })
-        if (imageId !== this.activeImageId || this.isCancelling)
-          throw new DOMException("processing cancelled", "AbortError")
-      } catch (error) {
-        URL.revokeObjectURL(url)
-        throw error
-      }
-      const canvasOutput = document.getElementById("canvas-output")
-      if (!(canvasOutput instanceof HTMLCanvasElement)) {
-        URL.revokeObjectURL(url)
-        throw new Error("missing output canvas")
-      }
-      canvasOutput.width = image.naturalWidth
-      canvasOutput.height = image.naturalHeight
-      const context = canvasOutput.getContext("2d")
-      if (!context) {
-        URL.revokeObjectURL(url)
-        throw new Error("failed to get canvas context")
-      }
-      context.drawImage(image, 0, 0)
-      this.outputPreviewWidth = canvasOutput.width
-      this.outputPreviewHeight = canvasOutput.height
+      const previewUrl = URL.createObjectURL(preview.blob)
+      this.outputPreviewWidth = preview.width
+      this.outputPreviewHeight = preview.height
       this.clearOutputPreviewUrl()
       this.outputObjectUrl = url
-      this.outputImgSrc = url
-      this.rememberBatchResult(url, canvasOutput.width, canvasOutput.height)
+      this.outputImgSrc = previewUrl
+      this.rememberBatchResult(url, previewUrl, preview.width, preview.height)
       this.finishModelLoading()
       this.isCancelling = false
       const costNum = cost < 1000 ? (cost / 1000).toFixed(2) : Math.round(cost / 1000)
@@ -2870,8 +2802,8 @@ const WorkspaceController = defineComponent({
       this.resolveCurrentProcess({
         filename: this.getOutputFilename(),
         objectUrl: url,
-        width: canvasOutput.width,
-        height: canvasOutput.height
+        width: preview.width,
+        height: preview.height
       })
       await this.$nextTick(() =>
         ElNotification({
@@ -2885,6 +2817,9 @@ const WorkspaceController = defineComponent({
     clearOutputPreviewUrl() {
       if (this.outputObjectUrl && !this.isBatchManagedObjectUrl(this.outputObjectUrl)) {
         URL.revokeObjectURL(this.outputObjectUrl)
+      }
+      if (this.outputImgSrc && !this.isBatchManagedObjectUrl(this.outputImgSrc)) {
+        URL.revokeObjectURL(this.outputImgSrc)
       }
       this.outputObjectUrl = ""
       this.outputImgSrc = ""
@@ -2905,7 +2840,11 @@ const WorkspaceController = defineComponent({
         return false
       }
       return this.batchItems.some((item) => {
-        return item.previewObjectUrl === objectUrl || item.objectUrl === objectUrl
+        return (
+          item.previewObjectUrl === objectUrl ||
+          item.outputPreviewObjectUrl === objectUrl ||
+          item.objectUrl === objectUrl
+        )
       })
     },
 
@@ -2987,11 +2926,6 @@ const WorkspaceController = defineComponent({
       this.clearOutputPreviewUrl()
       this.outputPreviewWidth = 0
       this.outputPreviewHeight = 0
-      let outputCanvas = document.getElementById("canvas-output")
-      if (outputCanvas instanceof HTMLCanvasElement) {
-        outputCanvas.width = 0
-        outputCanvas.height = 0
-      }
     },
 
     mapProcessErrorKey(code: number, lowerText: string) {
@@ -3088,6 +3022,8 @@ const WorkspaceController = defineComponent({
     },
 
     resetWorkspace(options: { keepBatch?: boolean } = {}) {
+      this.activeImageId += 1
+      this.inputBlob = null
       this.finishModelLoading()
       this.clearResultReveal()
       this.clearUploadPreviewUrl()
@@ -3128,14 +3064,9 @@ const WorkspaceController = defineComponent({
       this.resetTheme()
       this.scheduleStageLayoutSync()
       let uploadCanvas = document.getElementById("canvas-upload")
-      let outputCanvas = document.getElementById("canvas-output")
       if (uploadCanvas instanceof HTMLCanvasElement) {
         uploadCanvas.width = 0
         uploadCanvas.height = 0
-      }
-      if (outputCanvas instanceof HTMLCanvasElement) {
-        outputCanvas.width = 0
-        outputCanvas.height = 0
       }
     },
 
@@ -3144,43 +3075,27 @@ const WorkspaceController = defineComponent({
         if (item.previewObjectUrl) {
           URL.revokeObjectURL(item.previewObjectUrl)
         }
+        if (item.outputPreviewObjectUrl) {
+          URL.revokeObjectURL(item.outputPreviewObjectUrl)
+        }
         if (item.objectUrl) {
           URL.revokeObjectURL(item.objectUrl)
         }
       })
     },
 
-    runTestCase() {
-      this.loadTestCase()
+    async runTestCase() {
+      await this.loadTestCase()
     },
 
-    loadTestCase() {
-      let filename = "test-img.png"
-      let canvas = document.getElementById("canvas-upload")
-      if (!(canvas instanceof HTMLCanvasElement)) return
-      let ctx = canvas.getContext("2d")
-      if (!ctx) return
-      let img = new Image()
-      img.onload = () => {
-        canvas.width = img.width
-        canvas.height = img.height
-        ctx.drawImage(img, 0, 0)
-        this.uploadPreviewWidth = img.width
-        this.uploadPreviewHeight = img.height
-        this.uploadPreviewName = filename
-        this.scheduleStageLayoutSync()
-        this.applyImageThemeFromCanvas(canvas)
-        this.buildWebReDots(canvas)
-        this.scrollStageIntoView()
-        this.progressTip = ""
+    async loadTestCase() {
+      try {
+        const response = await fetch("test-img.png")
+        if (!response.ok) throw new Error("failed to load test image")
+        this.readUploadedFile({ name: "test-img.png", raw: await response.blob() })
+      } catch (error) {
+        this.handleProcessFailure(error)
       }
-      img.onerror = () => {
-        this.uploadImgSrc = ""
-        this.progressTip = ""
-        this.handleProcessFailure("failed to decode input image")
-      }
-      img.src = filename
-      this.uploadImgSrc = img.src
     }
   }
 })

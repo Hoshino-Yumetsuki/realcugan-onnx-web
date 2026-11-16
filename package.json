@@ -19,6 +19,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@imagemagick/magick-wasm": "^0.0.46",
     "@thi.ng/pixel": "^7.5.38",
     "@zip.js/zip.js": "^2.25.0",
     "colord": "^2.13.0",

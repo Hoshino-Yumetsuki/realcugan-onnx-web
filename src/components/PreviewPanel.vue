@@ -173,8 +173,7 @@ const w = useWorkspace()
             :style="'--d1:' + (0.12 + index * 0.46) + 's;--d2:' + (0.4 + index * 0.46) + 's'"
           >
             <span class="wipe-mark"></span><span class="wipe-bg"></span
-            ><span class="wipe-base">{{ txt }}</span
-            ><span class="wipe-on">{{ txt }}</span>
+            ><span class="wipe-base">{{ txt }}</span><span class="wipe-on">{{ txt }}</span>
           </div>
         </div>
         <div v-if="!w.isProcessing" class="fill lay lay-c ready-action-layer">
@@ -201,9 +200,6 @@ const w = useWorkspace()
       </template>
       <ImageComparison />
     </div>
-    <div style="display: none">
-      <canvas id="canvas-upload"></canvas><canvas id="canvas-output"></canvas
-      ><a id="download-link"></a>
-    </div>
+    <div style="display: none"><canvas id="canvas-upload"></canvas><a id="download-link"></a></div>
   </section>
 </template>

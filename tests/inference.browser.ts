@@ -104,6 +104,29 @@ async function verify(): Promise<void> {
     if (result.data[i] !== source.data[3]) throw new Error("Transparency was not preserved")
   }
   checks.push("Cancellation, worker recreation and PNG transparency passed")
+
+  // Input exceeds the previous cap; output also exceeds Chromium's 32767-pixel canvas side.
+  const wideCanvas = new OffscreenCanvas(16385, 7)
+  const wideContext = wideCanvas.getContext("2d")!
+  wideContext.fillStyle = "rgba(195,92,142,0.3)"
+  wideContext.fillRect(0, 0, wideCanvas.width, wideCanvas.height)
+  const wideInput = await wideCanvas.convertToBlob({ type: "image/png" })
+  const inputPreview = await processor.preview(wideInput)
+  if (inputPreview.width !== 16385 || inputPreview.height !== 7)
+    throw new Error("Input preview lost original dimensions")
+  const wideResult = await processor.process(wideInput, { ...options, tileSize: 128 }, () => {})
+  const header = new DataView(await wideResult.slice(0, 24).arrayBuffer())
+  if (header.getUint32(16) !== 32770 || header.getUint32(20) !== 14)
+    throw new Error("Full-resolution PNG dimensions were truncated")
+  const outputPreview = await processor.preview(wideResult)
+  if (outputPreview.width !== 32770 || outputPreview.height !== 14)
+    throw new Error("Output preview lost original dimensions")
+  const thumbnail = await pixels(outputPreview.blob)
+  if (thumbnail.width > 1024 || thumbnail.height > 1024)
+    throw new Error("Large-image preview was not bounded")
+  if (thumbnail.data[3] !== source.data[3] || thumbnail.data.at(-1) !== source.data[3])
+    throw new Error("Large PNG transparency was not preserved")
+  checks.push("16385px input → 32770px PNG, bounded previews and alpha passed")
 }
 
 try {

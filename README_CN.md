@@ -53,8 +53,9 @@ JavaScript 编译器 API，不要求降级项目编译器。
 
 ZIP 打包使用 `@zip.js/zip.js`，保持不压缩存储，支持 Unicode 文件名并避免重名覆盖；
 使用原生入口，不增加压缩 WASM 或 Worker 资源。`@thi.ng/pixel` 负责透明通道提取和
-双线性采样；`colord` 负责颜色转换、亮度与对比度。图片解码、画布显示和 PNG 编码
-使用浏览器原生 API，仅 ONNX 分块与张量转换保留专用实现。
+双线性采样；`colord` 负责颜色转换、亮度与对比度。`@imagemagick/magick-wasm`
+在同一 Worker 内完成全分辨率解码、分块拼接和 PNG 编码，不依赖 Canvas。
+界面与取色只使用单边不超过 1,024 像素的预览，下载与 ZIP 中仍保留完整输出分辨率。
 
 ## 模型与图像限制
 
@@ -87,31 +88,33 @@ JavaScript 将浮点输出打包为 PNG 字节。会话固定输入尺寸以常�
 
 默认按 128 输入像素分块，每块额外读取 32 像素上下文；较小分块可降低内存与显存
 占用。Real-CUGAN 包含全局 SE 统计，因此分块结果与全图推理并非逐像素一致；需要
-避免此差异时可选择全图模式，但要确保有足够内存。输出限制为单边不超过 16,384
-像素且总像素不超过 64 MP，设备实际内存限制可能更低。失败时显示错误，不使用
-普通缩放冒充模型结果。
+避免此差异时可选择全图模式，但要确保有足够内存。应用不再设置单边尺寸或总像素
+硬限制，大图无需装入浏览器 Canvas；实际边界取决于设备内存、WebAssembly 地址
+空间和图像库能力。内存风险提示仍可选择继续。失败时显示错误，不使用普通缩放冒充模型结果。
 
 ## 静态部署
 
 将**整个 `dist/` 目录**部署到任意静态 HTTP 服务，必须包含 `assets/`、
-`ort-runtime/` 和 `models/`。构建使用相对路径，支持部署到子目录。
-`.wasm.gz` 使用 `application/gzip` MIME，`.mjs` 使用 JavaScript MIME，
-`.onnx` 使用 `application/octet-stream` MIME。不要给 `.wasm.gz` 响应额外设置
-`Content-Encoding: gzip`：浏览器 Worker 会通过原生 `DecompressionStream` 解压文件，
-再交给 ONNX Runtime 的 `wasmBinary` 选项加载。每个 Worker 只初始化一次运行时，
-CPU 与 WebGPU 会话共同复用。初始化会多一步解压，并使用缓冲区而非流式 WASM 编译。
+`ort-runtime/`、`image-codec/` 和 `models/`。构建使用相对路径，支持部署到子目录。
+`.wasm.zip` 使用 `application/zip` MIME，`.mjs` 使用 JavaScript MIME，
+`.onnx` 使用 `application/octet-stream` MIME。两个 WASM 文件均打包为真实 ZIP，
+浏览器 Worker 通过已有的 `@zip.js/zip.js` 原生入口解压，分别交给 ONNX Runtime 的
+`wasmBinary` 选项和 ImageMagick 的 `initializeImageMagick` 加载。
+无需额外解压 Worker 或跨源隔离响应头。每个 Worker 只初始化一次运行时，
+CPU 与 WebGPU 会话共同复用 ONNX Runtime。初始化会多一步解压，使用缓冲区而非流式 WASM 编译。
 
-Vite 在开发和构建时压缩已安装 ONNX Runtime 包中的官方 WASM，并复制配套 `.mjs`，
-不再发布未压缩的 `.wasm`。运行时文件必须与应用一起更新；`index.html` 和
-`ort-runtime/` 应重新验证缓存，版本化模型 URL 可使用长期缓存。
+Vite 在开发和构建时将已安装 ONNX Runtime 和 ImageMagick 包中的官方 WASM 压缩为
+ZIP，并复制 ONNX Runtime 配套 `.mjs`，不发布未压缩 `.wasm`。运行时文件必须与
+应用一起更新；`index.html`、`ort-runtime/` 和 `image-codec/` 应重新验证缓存，
+版本化模型 URL 可使用长期缓存。
 推理资源全部由部署站点提供，无需外部模型服务或跨域配置。
 
 Cloudflare Workers Static Assets 的[单文件上限为 25 MiB](https://developers.cloudflare.com/workers/platform/limits/#static-assets)，
-免费和付费套餐相同。当前运行时压缩后约 6.8 MiB（解压后约 27.4 MiB），
+免费和付费套餐相同。当前 ONNX Runtime ZIP 约 6.9 MiB，ImageMagick ZIP 约 5.2 MiB，
 可以直接部署完整 `dist/`，无需 R2、外部 CDN 或服务端解压 Worker。
 不要通过 `file://` 直接打开页面。
 
-旧原生构建链、本地原生模型与旧 Worker 均已移除。压缩后的 `.wasm.gz` 来自官方
+旧原生构建链、本地原生模型与旧 Worker 均已移除。`.wasm.zip` 内的 WASM 来自官方
 ONNX Runtime Web 包，用于 GPU 图加载和调度，以及 CPU 模式下的模型推理。
 
 ## 致谢
