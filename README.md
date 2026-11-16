@@ -136,7 +136,6 @@ been removed. The `.wasm.zip` payload belongs to the official ONNX Runtime
 Web package: it hosts GPU graph loading/scheduling and executes models in CPU mode.
 
 ## Credits
-
 [Real-CUGAN](https://github.com/bilibili/ailab/tree/main/Real-CUGAN) by Bilibili,
-the ONNX model repository above, and the original
-[web project](https://github.com/hanFengSan/realcugan-ncnn-webassembly).
+the ONNX model repository above, the original
+[web project](https://github.com/hanFengSan/realcugan-ncnn-webassembly) and the frontend by [lemonno2333](https://github.com/lemonno2333)
