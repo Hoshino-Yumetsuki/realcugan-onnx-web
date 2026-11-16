@@ -1,66 +1,26 @@
-name: Build Real-CUGAN WebAssembly
+name: Build
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  NCNN_TAG: 20220729
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          submodules: recursive
-
-      - name: Install system dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y git cmake make g++ python3 nodejs npm
-
-      - name: Prepare dependencies
-        run: |
-          if [ ! -d fmt ]; then
-            git clone --depth 1 https://github.com/fmtlib/fmt.git fmt
-          fi
-          if [ ! -d ncnn ]; then
-            git clone --depth 1 https://github.com/Tencent/ncnn.git ncnn
-          fi
-          git -C ncnn fetch --depth 1 origin tag "$NCNN_TAG"
-          git -C ncnn checkout "$NCNN_TAG"
-
-      - name: Install Emscripten 3.1.13
-        run: |
-          git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
-          cd ~/emsdk
-          ./emsdk install 3.1.13
-          ./emsdk activate 3.1.13
-
-      - name: Build project
-        run: |
-          source ~/emsdk/emsdk_env.sh
-          sh build.sh
-
-      - name: List build result
-        run: |
-          echo "===== web files ====="
-          ls -lah web
-          find web -maxdepth 2 -type f | head -100
-
-      - name: Pack web folder
-        run: |
-          tar -czvf realcugan-web.tar.gz web
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+          node-version: 22
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn lint
+      - run: yarn typecheck
+      - run: yarn test
+      - run: yarn build
+      - uses: actions/upload-artifact@v4
         with:
           name: realcugan-web
-          path: realcugan-web.tar.gz
-          retention-days: 7
+          path: dist/
+          if-no-files-found: error

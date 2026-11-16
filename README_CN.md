@@ -1,129 +1,112 @@
-# RealCUGAN-ncnn-webassembly
-本项目使用 WebAssembly 技术，基于 ncnn 运行 Real-CUGAN 模型。目前使用 CPU
-进行计算，在浏览器本地完成图片处理，不会上传图片到服务器。
+# Real-CUGAN ONNX Web
 
-本 fork 保留仓库内现有的 ncnn 模型文件，不需要重新转换或生成模型。构建会产出
-`simd-threads`、`simd` 和 `basic` 三个 WebAssembly 后端，浏览器会优先使用最快的
-`simd-threads`，不支持 pthread/SharedArrayBuffer 时会自动降级到单线程 CPU 后端。
+[English](README.md)
 
-网页前端也做了更新，方便本地查看图片细节：
+完全在浏览器中运行的动漫图片超分辨率工具。使用 Vue 3、TypeScript、Vite、
+Element Plus 和 ONNX Runtime Web，可选择 WebGPU 或 CPU（WASM）推理。无需推理服务器，不上传图片。
 
-- 可选择 SE 和 Pro 两套 Real-CUGAN 模型，并包含完整的上游 SE 模型；
-- 固定页头/页脚的工具式布局，工作区留给图片预览；
-- 参考 Material Design Monet，从上传图片中提取主题色并应用到界面；
-- 处理中会根据图片主色生成动态 mesh 弥散渐变等待态；
-- 只保留叠图对比模式，分割线以预览窗格相对位置计算；
-- 桌面端支持受限范围内的放大、缩小、滚轮缩放和鼠标拖拽平移；
-- 移动端使用自然滚动布局，并支持手指拖拽查看放大后的图片区域；
-- 上传或处理完图片后，可以用“复位”清空当前结果并处理下一张图片。
+保留原版 CSS、桌面布局和移动端设置抽屉，不重新设计界面。`src/App.vue` 组合
+`src/components/` 下的设置、批量队列、上传与图片对比组件；`src/workspace.ts`
+管理类型化共享状态，`src/i18n.ts` 提供中、英、日三语词典。
 
-本 fork 还完成了 WebAssembly 后端优化：
+## 本地开发
 
-- `basic` 和 `simd` fallback 后端移入独立 Web Worker，在线程版 WASM 不可用时也能保持界面响应；
-- 模型改为从 `web/models/` 按需加载并使用普通 HTTP 缓存，不再打包进一个大型 Emscripten `.data` 文件；
-- 前端会根据后端能力、CPU 线程数、设备内存和视口尺寸自适应选择推理线程数和 tile 大小；
-- 后端按 tile 直接写入最终 RGBA 输出，尽量避免完整中间图和重复大缓冲，降低峰值内存；
-- 进度、完成、取消和错误事件改为更低开销的直接回调，不再通过 stdout 格式化 JSON；
-- 已 benchmark `-flto` 和 `emmalloc` 构建，目前两者收益不明显，因此默认不启用。
+需要 Node.js 22+；Yarn 4 版本已在 `package.json` 中锁定：
 
-[Real-CUGAN](https://github.com/bilibili/ailab/tree/main/Real-CUGAN) 是一个使用百万级动漫数据进行训练的，结构与Waifu2x兼容的通用动漫图像超分辨率模型。它支持2x\3x\4x倍超分辨率。本项目内置的 SE 模型已对齐上游 `models-se`：2倍模型支持保守、无降噪、denoise1x/2x/3x，3倍和4倍模型支持保守、无降噪、denoise3x。
-
-代码实现上深度参考了nihui大佬的[realcugan-ncnn-vulkan](https://github.com/nihui/realcugan-ncnn-vulkan)和[ncnn-webassembly-nanodet](https://github.com/nihui/ncnn-webassembly-nanodet)
-
-# 使用
-网站地址： https://realcugan.lemonno.xyz/
-
-Android/iOS请在独立浏览器内打开，PC推荐使用最新版本的Chrome或Firefox。
-
-# How to build
-
-你可以在GitHub Actions里面下载构建好的版本，或者按照下面的教程手动构建
-
- 1. 安装[emscripten](https://github.com/emscripten-core/emscripten)
- ```shell
- git clone https://github.com/emscripten-core/emsdk.git
-cd emsdk
-./emsdk install 3.1.13
-./emsdk activate 3.1.13
-
-source emsdk/emsdk_env.sh # 或者添加到.zshrc等地方
- ```
-2. 构建项目:
-```shell
-git clone https://github.com/lemonno2333/realcugan-ncnn-webassembly.git
-cd realcugan-ncnn-webassembly
-
-git submodule update --init
-# 如果当前 fork 没有记录 submodule gitlink，可以手动准备依赖：
-# git clone --depth 1 https://github.com/fmtlib/fmt.git fmt
-# git clone --depth 1 --branch 20220729 https://github.com/Tencent/ncnn.git ncnn
-sh build.sh
-
-go run local_server.go
-```
-然后打开: http://localhost:8000
-
-默认会构建全部后端。如只想构建某个后端，可以设置：
-
-```shell
-WASM_FEATURES=basic sh build.sh
-WASM_FEATURES="simd simd-threads" sh build.sh
+```sh
+corepack enable
+yarn install --immutable
+yarn dev
 ```
 
-公网部署时请在构建后完整复制 `web/` 目录，前端需要其中生成的 `.wasm`、`.js`、
-worker 文件以及 `web/models/` 模型文件。模型会按当前选择通过普通 HTTP 缓存按需加载，
-不再打包进一个 `.data` 文件。仍建议配置 COOP/COEP 响应头，这样支持线程的浏览器可以
-使用最快的 `simd-threads` 后端；如果没有这些响应头，页面会尝试使用较慢的单线程后端。
-
-发布前建议运行：
-
-```shell
-npm run check:deploy
+```sh
+yarn lint
+yarn test
+yarn build
+yarn preview
 ```
 
-推荐的 COOP/COEP 响应头、`.wasm` MIME 类型、缓存头，以及 Nginx/Apache 示例见
-`docs/deployment.md`。
+`yarn build` 先通过 `vue-tsc` 检查 TypeScript 和 Vue 模板，再生成 `dist/`。
+工具链参考 `moejs-wasm`：严格 TypeScript、Yarn node-modules linker、Oxlint、Oxfmt。
+`yarn format` 格式化源码，`yarn format:check` 检查格式。
+保留 TypeScript 7；`vue-tsc` 通过独立的 `@typescript/typescript6` 兼容依赖使用
+JavaScript 编译器 API，不要求降级项目编译器。
 
-发布重新构建的 runtime、worker 或模型资源时，请同步递增 `web/index.html` 里的
-`APP_VERSION`，确保浏览器请求新的 `?v=` 资源地址，而不是继续使用旧缓存。
+真实模型浏览器回归：运行 `yarn dev`，打开
+`http://localhost:5173/tests/inference.html`，添加 `?backend=wasm` 测试 CPU；禁用 GPU
+适配器后添加 `?expect-unavailable` 测试无 WebGPU 环境。覆盖全部 17 个内置模型、
+显式后端切换、取消后重建 Worker 和 PNG 透明通道。
 
-注意：请固定使用 ncnn `20220729`。较新的 ncnn 版本可能能编译通过，但会导致旧
-Real-CUGAN 模型输出雪花、彩色条纹或错位图像。
+## 使用方式
 
-# 性能测量
+- 选择、拖放或粘贴图片，在独立 Worker 中按队列顺序处理。
+- 可选 WebGPU（默认）或 CPU（WASM），选择自动保存，处理中不可切换。
+  WebGPU 需要兼容浏览器和设备，并通过 HTTPS 或 localhost 打开页面。
+  WebGPU 不可用或初始化失败时会报错，不静默回退；可手动选择 CPU。
+- CPU 使用 ONNX Runtime WASM 在同一独立 Worker 中推理，不依赖 WebGPU。
+  官方 ONNX Runtime 宿主也负责 GPU 图加载和调度。
+- 取消操作立即终止 Worker，已完成结果保留；取消或失败的图片可重试，下一次
+  处理自动创建新 Worker。
+- 支持滑条对比、预览缩放和平移、逐张 PNG 下载及全部 ZIP 打包下载。
+  PNG 透明通道通过双线性插值缩放保留。
+- 中文、英文、日文；浅色、深色、跟随系统主题。
 
-构建完成后，可以用下面的命令测量代表性峰值内存：
+ZIP 打包使用 `@zip.js/zip.js`，保持不压缩存储，支持 Unicode 文件名并避免重名覆盖；
+使用原生入口，不增加压缩 WASM 或 Worker 资源。`@thi.ng/pixel` 负责透明通道提取和
+双线性采样；`colord` 负责颜色转换、亮度与对比度。图片解码、画布显示和 PNG 编码
+使用浏览器原生 API，仅 ONNX 分块与张量转换保留专用实现。
 
-```shell
-node tests/measure-peak-memory.cjs --backend basic
-```
+## 模型与图像限制
 
-脚本也支持 `--backend simd`、`--backend simd-threads` 和 `--json`。当前 1080p、
-1440p、4K 的缓冲区基线和测量说明见 `docs/performance-memory.md`。
+全部 17 个 ONNX 模型以普通二进制文件保存在
+`public/models/c582623ea970dffed0c0afaf971ab43bb3356604/webgpu-f32/`，随仓库一起分发。
+模型来自
+[Hoshino-Yumetsuki/Real-CUGAN-ONNX](https://huggingface.co/Hoshino-Yumetsuki/Real-CUGAN-ONNX)，
+对应 `src/models.ts` 固定的 revision，总计约 89.4 MB。
+Vite 构建时复制到 `dist/models/`，浏览器仅按需从本站加载所选模型，并使用普通
+HTTP 缓存。运行时不再连接 Hugging Face 或模型 CDN。
 
-运行时线程数和 tile 大小矩阵可以用下面的命令测量：
+| 模型系列             | 放大倍率 | 降噪选项              |
+| -------------------- | -------- | --------------------- |
+| SE（`weights_v3`）   | 2×       | 保守、不降噪、1、2、3 |
+| SE（`weights_v3`）   | 3× / 4×  | 保守、不降噪、3       |
+| Pro（`weights_pro`） | 2× / 3×  | 保守、不降噪、3       |
 
-```shell
-node tests/benchmark-runtime-settings.cjs --backend simd-threads
-```
+ONNX 图接受 `image`（float32 NCHW，RGB [0,1]）与 `alpha`（float32 标量，固定为
+1），返回 float32 NCHW RGB。反射填充、输出裁剪与 Pro 归一化仍保留在图中；
+上游新版将 3× 模型中的一个 ConvTranspose 替换为 Conv、Slice 和 DepthToSpace。
 
-自适应默认值和 benchmark 矩阵见 `docs/runtime-settings.md`。
+内置变体仅移除上游 PNG 字节量化尾部，避免 WebGPU 不支持的 uint8 Cast；
+JavaScript 将浮点输出打包为 PNG 字节。会话固定输入尺寸以常量折叠形状运算，
+选择 WebGPU 时显式禁用 CPU 执行提供程序回退；CPU 模式明确使用 WASM 执行提供程序。
+同尺寸分块复用一次会话编译，切换后端时重新创建会话。
 
-更多实现和 benchmark 记录：
+如需重新生成已提交的模型，安装 [uv](https://docs.astral.sh/uv/) 后运行
+`uv run scripts/prepare-models.py`。此可选准备步骤会校验上游 SHA-256，
+日常开发、构建与浏览器推理均不需要 Python。
 
-- `docs/worker-architecture.md`：worker 消息协议和取消行为。
-- `docs/performance-memory.md`：峰值内存测量说明。
-- `docs/performance-cleanup.md`：`-flto` 和 `emmalloc` benchmark 结果。
+默认按 128 输入像素分块，每块额外读取 32 像素上下文；较小分块可降低内存与显存
+占用。Real-CUGAN 包含全局 SE 统计，因此分块结果与全图推理并非逐像素一致；需要
+避免此差异时可选择全图模式，但要确保有足够内存。输出限制为单边不超过 16,384
+像素且总像素不超过 64 MP，设备实际内存限制可能更低。失败时显示错误，不使用
+普通缩放冒充模型结果。
 
-快速 smoke 检查：
+## 静态部署
 
-```shell
-node tests/backend-smoke.cjs basic
-node tests/backend-smoke.cjs simd
-node tests/backend-smoke.cjs simd-threads
-```
+将**整个 `dist/` 目录**部署到任意静态 HTTP 服务，必须包含 `assets/`、
+`ort-runtime/` 和 `models/`。构建使用相对路径，支持部署到子目录。
+`.wasm` 使用 `application/wasm` MIME，`.mjs` 使用 JavaScript MIME，
+`.onnx` 使用 `application/octet-stream` MIME。Vite 会从安装的 ONNX Runtime 包中
+复制对应版本的运行时文件，发布时必须与应用一起更新；`index.html` 和
+`ort-runtime/` 应重新验证缓存，版本化模型 URL 可使用长期缓存。
+推理资源全部由部署站点提供，无需外部模型服务或跨域配置。
+不要通过 `file://` 直接打开页面。
 
-# 致谢
+旧原生构建链、本地原生模型与旧 Worker 均已移除。保留的 `.wasm` 来自官方
+ONNX Runtime Web 包，用于 GPU 图加载和调度，以及 CPU 模式下的模型推理。
 
-本 fork 基于原项目
-[hanFengSan/realcugan-ncnn-webassembly](https://github.com/hanFengSan/realcugan-ncnn-webassembly)。
+## 致谢
+
+哔哩哔哩的 [Real-CUGAN](https://github.com/bilibili/ailab/tree/main/Real-CUGAN)、
+上述 ONNX 模型仓库及
+[原 Web 项目](https://github.com/hanFengSan/realcugan-ncnn-webassembly)。

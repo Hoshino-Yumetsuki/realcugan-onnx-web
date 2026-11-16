@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <script>
+        if (location.protocol !== 'https:' && location.href.includes('real-cugan')) {
+            location.replace(`https:${location.href.substring(location.protocol.length)}`);
+        }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="renderer" content="webkit" />
+    <!-- Keep the initial metadata aligned with src/i18n.ts. -->
+    <title>REAL-CUGAN 超·分辨率</title>
+    <meta name="force-rendering" content="webkit" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+    <meta name="description" content="免费在线 Real-CUGAN 动漫图片超分辨率工具，使用 ONNX 在浏览器本地放大 2×-4× 动漫、插画与线稿，保障隐私且无需上传。">
+    <meta name="theme-color" content="#120a18">
+    <link rel="canonical" href="https://realcugan.lemonno.xyz/">
+    <link rel="alternate" hreflang="zh-Hans" href="https://realcugan.lemonno.xyz/">
+    <link rel="alternate" hreflang="en" href="https://realcugan.lemonno.xyz/?lang=en">
+    <link rel="alternate" hreflang="ja" href="https://realcugan.lemonno.xyz/?lang=ja">
+    <link rel="alternate" hreflang="x-default" href="https://realcugan.lemonno.xyz/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Real-CUGAN">
+    <meta property="og:locale" content="zh_CN">
+    <meta property="og:title" content="免费在线 Real-CUGAN 动漫图片超分辨率">
+    <meta property="og:description" content="图片在浏览器本地处理，无需上传；支持 2×、3×、4× 动漫图片放大与降噪。">
+    <meta property="og:url" content="https://realcugan.lemonno.xyz/">
+    <meta property="og:image" content="https://realcugan.lemonno.xyz/social-preview.jpg">
+    <meta property="og:image:secure_url" content="https://realcugan.lemonno.xyz/social-preview.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Real-CUGAN 动漫图片超分辨率处理前后对比">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="免费在线 Real-CUGAN 动漫图片超分辨率">
+    <meta name="twitter:description" content="图片在浏览器本地处理，无需上传；支持 2×、3×、4× 动漫图片放大与降噪。">
+    <meta name="twitter:image" content="https://realcugan.lemonno.xyz/social-preview.jpg">
+    <!-- I18N:META:END -->
+    <link rel="icon" href="/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Weights trimmed to what the CSS actually uses:
+         Space Grotesk only 700 (brand/decor), Zen Maru 500 default + 700,
+         JetBrains Mono 400 + 700, Instrument Serif regular only (no italic
+         used). Noto Sans SC keeps 500 for Element Plus dialog buttons. -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Zen+Maru+Gothic:wght@500;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet" crossorigin>
+<!-- Structured data for SEO -->
+<!-- I18N:JSONLD:START — regenerated per language by build_pages.py -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://realcugan.lemonno.xyz/#website",
+      "url": "https://realcugan.lemonno.xyz/",
+      "name": "Real-CUGAN",
+      "description": "免费在线动漫图片超分辨率工具，全部在浏览器本地处理，无需上传。",
+      "inLanguage": ["zh-CN", "en", "ja"]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://realcugan.lemonno.xyz/#webpage",
+      "url": "https://realcugan.lemonno.xyz/",
+      "name": "免费在线动漫图片超分辨率 - Real-CUGAN",
+      "description": "使用 ONNX 在浏览器本地放大动漫、插画与线稿，支持 2×-4×、降噪。",
+      "inLanguage": "zh-CN",
+      "isPartOf": { "@id": "https://realcugan.lemonno.xyz/#website" },
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://realcugan.lemonno.xyz/social-preview.jpg",
+        "width": 1200,
+        "height": 630,
+        "caption": "Real-CUGAN 动漫图片超分辨率前后对比"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://realcugan.lemonno.xyz/#app",
+      "name": "Real-CUGAN",
+      "operatingSystem": "Web",
+      "applicationCategory": "GraphicsApplication",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "url": "https://realcugan.lemonno.xyz/",
+      "description": "浏览器本地 AI 超分辨率，无需上传图片。",
+      "softwareVersion": "2026.08.31-unified.13",
+      "image": "https://realcugan.lemonno.xyz/social-preview.jpg"
+    }
+  ]
+}
+</script>
+<!-- I18N:JSONLD:END -->
+    <link rel="stylesheet" href="/normalize.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Skeleton Loader before Vue mounts -->
+        <div class="app-skeleton">
+            <div class="skeleton-workspace">
+                <aside class="skeleton-panel">
+                    <div class="skeleton-item skeleton-brand"></div>
+                    <div class="skeleton-item skeleton-section" style="height: 80px;"></div>
+                    <div class="skeleton-item skeleton-section" style="height: 140px;"></div>
+                    <div class="skeleton-item skeleton-section" style="height: 50px;"></div>
+                </aside>
+                <section class="skeleton-stage">
+                    <div class="skeleton-toolbar"></div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-upload-box"></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+    <!-- I18N:SEO:START — one language per URL; regenerated by build_pages.py -->
+    <section class="seo-content" aria-label="Real-CUGAN 介绍">
+        <article class="seo-copy" lang="zh-CN" aria-labelledby="seo-title-zh">
+            <p class="seo-kicker">LOCAL AI IMAGE UPSCALER</p>
+            <h1 id="seo-title-zh">免费在线 Real-CUGAN 动漫图片超分辨率</h1>
+            <p class="seo-lead">Real-CUGAN 专为动漫、插画和线稿设计，可在浏览器本地通过 ONNX 放大 2×、3×、4×，改善线条、色块与压缩噪点，图片无需上传。</p>
+            <div class="seo-prose">
+                <h2>模型怎么选</h2>
+                <p><strong>SE</strong> 支持 2×、3×、4×，需要 4× 时选择 SE；<strong>Pro</strong> 支持 2×、3×，想要更自然的线条和色块时可以先试 Pro。</p>
+                <h2>降噪怎么选</h2>
+                <p>原图干净选<strong>无降噪</strong>；想保留画风和纹理选<strong>保守</strong>；轻度压缩噪点选<strong>降噪 1/2</strong>（SE 的 2×）；噪点明显时选<strong>降噪 3</strong>。强降噪可能损失细节。</p>
+            </div>
+            <p class="seo-langnav">Other languages:
+                <a href="?lang=en" hreflang="en" lang="en">English</a> ·
+                <a href="?lang=ja" hreflang="ja" lang="ja">日本語</a>
+            </p>
+        </article>
+    </section>
+    <!-- I18N:SEO:END -->
+</body>
+
+
+
+<script type="module" src="/src/main.ts"></script>
+</html>

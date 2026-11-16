@@ -1,27 +1,12 @@
-# IDE
-/.vscode
-/.idea
-
-# CMake build directory
-build/
-cmake-build-debug/
-
-# Node / Playwright
 node_modules/
-playwright-report/
-test-results/
-
-# files
+dist/
+coverage/
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 .DS_Store
-debug.log
-/ncnn
-/fmt
-/third_party/emsdk
-/.tools/
-/web/realcugan-ncnn-webassembly*
-/web/up2x*
-/web/up3x*
-/web/up4x*
-/web/models-pro/
 /.agents
-web/plan.md
+/.tools/

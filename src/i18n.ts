@@ -1,0 +1,464 @@
+// UI translations for the static Real-CUGAN web app.
+export const I18N = {
+  zh: {
+    app: {
+      title: "REAL-CUGAN 超·分辨率",
+      heading: "动漫图片超分辨率",
+      brandSuffix: "超·分辨率",
+      description:
+        "免费在线 Real-CUGAN 动漫图片超分辨率工具，使用 ONNX 在浏览器本地放大 2×-4× 动漫、插画与线稿，保障隐私且无需上传。"
+    },
+    nav: {
+      originalProject: "原作项目",
+      language: "语言",
+      theme: "主题"
+    },
+    theme: {
+      auto: "跟随系统",
+      light: "浅色",
+      dark: "深色"
+    },
+    help: {
+      localPrefix: "本项目基于 ONNX，",
+      localStrong: "在浏览器端使用 WebGPU 或 CPU（WASM）完成图像处理，",
+      localSuffix: "不会上传任何图片到云端。",
+      noticeTitle: "注意：",
+      noticeText:
+        "处理图片时可能占用较多内存和计算资源。如果输出有问题或长时间无响应，请刷新重试。",
+      scaleTitle: "超分倍率：",
+      scaleText: "决定输出图片尺寸，推荐 2X；倍率越高处理越久。",
+      denoiseTitle: "降噪：",
+      denoiseText:
+        "原片噪声多或压缩严重时推荐使用；原片质量较好时可选无降噪；担心画风、纹理或颜色改变时可选保守。",
+      projectInfoLabel: "项目说明"
+    },
+    controls: {
+      backendMode: "后端模式",
+      params: "参数",
+      settingsButton: "参数设置",
+      model: "模型",
+      scale: "倍率",
+      denoise: "降噪"
+    },
+    model: {
+      se: "SE",
+      pro: "Pro"
+    },
+    backend: {
+      webgpu: "WebGPU",
+      wasm: "CPU"
+    },
+    denoise: {
+      conservative: "保守",
+      none: "无"
+    },
+    actions: {
+      close: "关闭",
+      sample: "示例图片",
+      reset: "复位",
+      save: "保存图片",
+      download: "下载",
+      retry: "重试",
+      downloadAll: "下载全部",
+      clearBatch: "清空批量",
+      cancel: "取消处理",
+      cancelling: "正在取消"
+    },
+    stage: {
+      workspace: "工作区",
+      ready: "已就绪 / READY",
+      start: "开始重建",
+      loadingAssets: "资源加载中",
+      loadingAssetsProgress: "正在加载处理资源 {percent}%",
+      preparingBackend: "正在准备处理后端，并预取模型文件..."
+    },
+    progress: {
+      starting: "启动中，预计10秒内完成耗时估算...",
+      loadingModel: "正在加载所选模型 {percent}%",
+      loadingModelFile: "正在加载 {model}：{file} {percent}%",
+      processing: "正在本地处理......",
+      cancelling: "正在取消处理......",
+      done: "处理完成！耗时: {seconds}秒",
+      stalled: "处理进度已超过 {seconds} 秒没有变化，可能已经卡住。可以点击取消后重试，或刷新页面。"
+    },
+    preview: {
+      before: "原图",
+      after: "重建",
+      zoomOut: "缩小",
+      zoomIn: "放大"
+    },
+    upload: {
+      drag: "将文件拖到此处，或",
+      click: "点击选取",
+      batchHint: "jpg / png / webp / bmp，支持多选批量处理"
+    },
+    batch: {
+      title: "批量处理",
+      summary: "已完成 {done} / {total}",
+      running: "处理中",
+      busy: "已有任务正在运行，请稍后再选择批量图片。",
+      queued: "已加入 {total} 张图片，准备顺序处理。",
+      processing: "正在处理 {current} / {total}: {name}",
+      done: "批量处理完成：{done} / {total}",
+      doneWithErrors: "批量处理完成：{done} / {total}，{failed} 张失败",
+      cancelled: "批量处理已取消",
+      status: {
+        pending: "等待",
+        processing: "处理中",
+        done: "完成",
+        error: "失败",
+        cancelled: "已取消"
+      }
+    },
+    footer: {
+      version: "版本",
+      backend: "后端"
+    },
+    dialog: {
+      reload: "刷新",
+      ok: "确定",
+      continue: "继续处理",
+      safeSettings: "使用安全设置",
+      dontShowAgain: "下次不再提示",
+      sizeRiskTitle: "图片尺寸风险",
+      sizeRiskText:
+        "当前会输出 {width} × {height}，预估至少占用 {memory} MB 内存。这个尺寸可能会导致浏览器卡顿或处理失败，建议降低倍率或换小图。",
+      sizeRiskBlockText:
+        "当前会输出 {width} × {height}，预估至少占用 {memory} MB 内存，已经超过浏览器可稳定处理的范围。继续处理可能导致页面卡死、浏览器崩溃或处理失败。",
+      sizeRiskMobileHint: "移动端浏览器通常可用内存更紧张，4X 或大图更容易失败。",
+      sizeRiskSafeText: "安全设置会切换到 SE / 2X 继续处理。",
+      processErrorTitle: "处理错误",
+      processErrorText: "错误信息: {message}",
+      processErrorWebgpu:
+        "WebGPU 不可用或初始化失败。请使用支持 WebGPU 的浏览器和设备，并通过 HTTPS 或 localhost 访问，或在设置中手动选择 CPU 后重试。",
+      processErrorGeneric: "处理失败。你可以复位后重新选择图片，或降低倍率后再试。",
+      processErrorMemory:
+        "浏览器内存不足或 WebAssembly 内存越界。建议降低倍率、换小图，或刷新页面后再试。",
+      processErrorModel:
+        "本站模型文件读取失败。请根据下面的具体文件名检查服务器文件，并强制刷新页面。",
+      processErrorAsset:
+        "后端资源或模型文件加载失败。请确认服务器上的 .js、.wasm、worker 和 models 文件来自同一次构建。",
+      processErrorConflict: "当前已有任务正在运行，暂时不能启动新的处理。请稍后再试。",
+      processErrorInput:
+        "图片尺寸、处理参数或内存缓冲区无效，任务已在处理前安全停止。请复位后重新选择图片。",
+      resourceErrorTitle: "资源加载失败",
+      resourceErrorText: "无法加载 {backend} 后端，请确认本站包含完整构建产物。"
+    },
+    notify: {
+      success: "成功",
+      saved: "保存成功",
+      busy: "任务忙"
+    }
+  },
+  en: {
+    app: {
+      title: "REAL-CUGAN SUPER·RESOLUTION",
+      heading: "Anime Image Upscaler",
+      brandSuffix: "SUPER·RESOLUTION",
+      description:
+        "Free online Real-CUGAN anime image upscaler. Enlarge anime art, illustrations and line art 2×-4× locally in your browser with ONNX — nothing is uploaded."
+    },
+    nav: {
+      originalProject: "Original project",
+      language: "Language",
+      theme: "Theme"
+    },
+    theme: {
+      auto: "System",
+      light: "Light",
+      dark: "Dark"
+    },
+    help: {
+      localPrefix: "Powered by ONNX. ",
+      localStrong: "Images are processed locally in the browser with WebGPU or CPU, ",
+      localSuffix: "and are never uploaded to the cloud.",
+      noticeTitle: "Note: ",
+      noticeText:
+        "Processing may use substantial memory and computing resources. If the output looks wrong or the page stops responding, refresh and try again.",
+      scaleTitle: "Scale: ",
+      scaleText:
+        "Controls the output size. 2X is recommended. Higher scales take longer to process.",
+      denoiseTitle: "Denoise: ",
+      denoiseText:
+        "Use denoise for noisy or heavily compressed images. Choose none for clean originals, or conservative if you want to preserve style, texture, and color.",
+      projectInfoLabel: "Project info"
+    },
+    controls: {
+      backendMode: "Backend",
+      params: "Settings",
+      settingsButton: "Parameter settings",
+      model: "Model",
+      scale: "Scale",
+      denoise: "Denoise"
+    },
+    model: {
+      se: "SE",
+      pro: "Pro"
+    },
+    backend: {
+      webgpu: "WebGPU",
+      wasm: "CPU"
+    },
+    denoise: {
+      conservative: "Conservative",
+      none: "None"
+    },
+    actions: {
+      close: "Close",
+      sample: "Sample",
+      reset: "Reset",
+      save: "Save image",
+      download: "Download",
+      retry: "Retry",
+      downloadAll: "Download all",
+      clearBatch: "Clear batch",
+      cancel: "Cancel",
+      cancelling: "Cancelling"
+    },
+    stage: {
+      workspace: "Workspace",
+      ready: "READY",
+      start: "Start rebuild",
+      loadingAssets: "Loading assets",
+      loadingAssetsProgress: "Loading processing assets {percent}%",
+      preparingBackend: "Preparing backend and preloading model files..."
+    },
+    progress: {
+      starting: "Starting. Time estimate should be ready within 10 seconds...",
+      loadingModel: "Loading selected model {percent}%",
+      loadingModelFile: "Loading {model}: {file} {percent}%",
+      processing: "Processing locally...",
+      cancelling: "Cancelling processing...",
+      done: "Done. Time: {seconds}s",
+      stalled:
+        "No progress for {seconds}s — processing may be stuck. Cancel and retry, or refresh the page."
+    },
+    preview: {
+      before: "Before",
+      after: "After",
+      zoomOut: "Zoom out",
+      zoomIn: "Zoom in"
+    },
+    upload: {
+      drag: "Drop an image here, or ",
+      click: "click to choose",
+      batchHint: "jpg / png / webp / bmp, multiple images supported"
+    },
+    batch: {
+      title: "Batch",
+      summary: "{done} / {total} done",
+      running: "Running",
+      busy: "A task is already running. Choose batch images after it finishes.",
+      queued: "{total} images queued for sequential processing.",
+      processing: "Processing {current} / {total}: {name}",
+      done: "Batch complete: {done} / {total}",
+      doneWithErrors: "Batch complete: {done} / {total}, {failed} failed",
+      cancelled: "Batch cancelled",
+      status: {
+        pending: "Pending",
+        processing: "Processing",
+        done: "Done",
+        error: "Failed",
+        cancelled: "Cancelled"
+      }
+    },
+    footer: {
+      version: "Version",
+      backend: "Backend"
+    },
+    dialog: {
+      reload: "Refresh",
+      ok: "OK",
+      continue: "Continue",
+      safeSettings: "Use safe settings",
+      dontShowAgain: "Do not show again",
+      sizeRiskTitle: "Image size risk",
+      sizeRiskText:
+        "This will output {width} × {height} and may use at least {memory} MB of memory. This size can make the browser slow or fail. Lower the scale or use a smaller image if possible.",
+      sizeRiskBlockText:
+        "This will output {width} × {height} and may use at least {memory} MB of memory, which is above the stable browser range. Continuing may freeze the page, crash the browser, or fail.",
+      sizeRiskMobileHint:
+        "Mobile browsers usually have tighter available memory, so 4X or large images are more likely to fail.",
+      sizeRiskSafeText: "Safe settings switch to SE / 2X before continuing.",
+      processErrorTitle: "Processing error",
+      processErrorText: "Error: {message}",
+      processErrorWebgpu:
+        "WebGPU is unavailable or could not be initialized. Use a WebGPU-capable browser and device over HTTPS or localhost, or explicitly select CPU in settings and retry.",
+      processErrorGeneric:
+        "Processing failed. You can reset the workspace and try again, or lower the scale.",
+      processErrorMemory:
+        "The browser ran out of memory or WebAssembly hit an out-of-bounds access. Lower the scale, use a smaller image, or refresh the page and try again.",
+      processErrorModel:
+        "Model loading failed. Check the file below in the site models directory and hard refresh the page.",
+      processErrorAsset:
+        "Backend assets or model files failed to load. Make sure the .js, .wasm, worker, and models files on the server come from the same build.",
+      processErrorConflict:
+        "Another task is already running, so a new process cannot start yet. Please try again later.",
+      processErrorInput:
+        "The image dimensions, processing options, or memory buffers are invalid. The task stopped safely before processing. Reset and select the image again.",
+      resourceErrorTitle: "Asset loading failed",
+      resourceErrorText:
+        "Could not load the {backend} backend. Please make sure the site contains the full build output."
+    },
+    notify: {
+      success: "Success",
+      saved: "Saved",
+      busy: "Busy"
+    }
+  },
+  ja: {
+    app: {
+      title: "REAL-CUGAN 超·解像",
+      heading: "アニメ画像アップスケーラー",
+      brandSuffix: "超·解像",
+      description:
+        "無料のオンライン Real-CUGAN アニメ画像超解像ツール。ONNX でブラウザー内のまま、アニメ・イラスト・線画を 2×〜4× に拡大します。画像はアップロードされません。"
+    },
+    nav: {
+      originalProject: "元プロジェクト",
+      language: "言語",
+      theme: "テーマ"
+    },
+    theme: {
+      auto: "システム",
+      light: "ライト",
+      dark: "ダーク"
+    },
+    help: {
+      localPrefix: "このプロジェクトは ONNX を利用しています。",
+      localStrong: "画像処理はブラウザー内で WebGPU または CPU（WASM）を使ってローカルに実行され、",
+      localSuffix: "画像がクラウドへアップロードされることはありません。",
+      noticeTitle: "注意: ",
+      noticeText:
+        "処理中はメモリや計算資源を多く使用する場合があります。出力がおかしい場合や長時間応答しない場合は、更新して再試行してください。",
+      scaleTitle: "拡大率: ",
+      scaleText: "出力画像のサイズを決めます。2X 推奨です。倍率が高いほど処理に時間がかかります。",
+      denoiseTitle: "ノイズ除去: ",
+      denoiseText:
+        "ノイズや圧縮劣化が多い画像におすすめです。元画像がきれいな場合は「なし」、画風・質感・色の変化を抑えたい場合は「控えめ」を選んでください。",
+      projectInfoLabel: "プロジェクト説明"
+    },
+    controls: {
+      backendMode: "バックエンド",
+      params: "設定",
+      settingsButton: "パラメータ設定",
+      model: "モデル",
+      scale: "倍率",
+      denoise: "ノイズ除去"
+    },
+    model: {
+      se: "SE",
+      pro: "Pro"
+    },
+    backend: {
+      webgpu: "WebGPU",
+      wasm: "CPU"
+    },
+    denoise: {
+      conservative: "控えめ",
+      none: "なし"
+    },
+    actions: {
+      close: "閉じる",
+      sample: "サンプル画像",
+      reset: "リセット",
+      save: "画像を保存",
+      download: "保存",
+      retry: "再試行",
+      downloadAll: "すべて保存",
+      clearBatch: "バッチをクリア",
+      cancel: "キャンセル",
+      cancelling: "キャンセル中"
+    },
+    stage: {
+      workspace: "ワークスペース",
+      ready: "準備完了 / READY",
+      start: "再構築を開始",
+      loadingAssets: "リソース読み込み中",
+      loadingAssetsProgress: "処理リソースを読み込み中 {percent}%",
+      preparingBackend: "処理バックエンドを準備し、モデルを先読みしています..."
+    },
+    progress: {
+      starting: "起動中です。約10秒以内に残り時間を見積もります...",
+      loadingModel: "選択したモデルを読み込み中 {percent}%",
+      loadingModelFile: "{model} を読み込み中: {file} {percent}%",
+      processing: "ローカルで処理中...",
+      cancelling: "処理をキャンセル中...",
+      done: "処理完了！所要時間: {seconds}秒",
+      stalled:
+        "{seconds} 秒間進捗がありません。処理が停止している可能性があります。キャンセルして再試行するか、ページを更新してください。"
+    },
+    preview: {
+      before: "元画像",
+      after: "再構築",
+      zoomOut: "縮小",
+      zoomIn: "拡大"
+    },
+    upload: {
+      drag: "ここに画像をドラッグ、または",
+      click: "クリックして選択",
+      batchHint: "jpg / png / webp / bmp、複数選択に対応"
+    },
+    batch: {
+      title: "バッチ処理",
+      summary: "{done} / {total} 完了",
+      running: "処理中",
+      busy: "別の処理が実行中です。完了後にバッチ画像を選択してください。",
+      queued: "{total} 枚の画像を順番に処理します。",
+      processing: "{current} / {total} を処理中: {name}",
+      done: "バッチ完了: {done} / {total}",
+      doneWithErrors: "バッチ完了: {done} / {total}、{failed} 枚失敗",
+      cancelled: "バッチ処理をキャンセルしました",
+      status: {
+        pending: "待機中",
+        processing: "処理中",
+        done: "完了",
+        error: "失敗",
+        cancelled: "キャンセル済み"
+      }
+    },
+    footer: {
+      version: "バージョン",
+      backend: "バックエンド"
+    },
+    dialog: {
+      reload: "更新",
+      ok: "OK",
+      continue: "続行",
+      safeSettings: "安全設定を使う",
+      dontShowAgain: "次回から表示しない",
+      sizeRiskTitle: "画像サイズのリスク",
+      sizeRiskText:
+        "出力は {width} × {height} になり、少なくとも {memory} MB のメモリを使う可能性があります。このサイズではブラウザーが重くなったり失敗したりすることがあります。倍率を下げるか、小さい画像を使うことをおすすめします。",
+      sizeRiskBlockText:
+        "出力は {width} × {height} になり、少なくとも {memory} MB のメモリを使う可能性があり、ブラウザーで安定して処理できる範囲を超えています。続行するとページの停止、ブラウザーのクラッシュ、処理失敗が起きる可能性があります。",
+      sizeRiskMobileHint:
+        "モバイルブラウザーは使用可能メモリが限られるため、4X や大きな画像は失敗しやすくなります。",
+      sizeRiskSafeText: "安全設定では SE / 2X に切り替えて処理を続けます。",
+      processErrorTitle: "処理エラー",
+      processErrorText: "エラー: {message}",
+      processErrorWebgpu:
+        "WebGPU を利用できないか、初期化に失敗しました。WebGPU 対応のブラウザーとデバイスを使用し、HTTPS または localhost でアクセスするか、設定で CPU を明示的に選択して再試行してください。",
+      processErrorGeneric:
+        "処理に失敗しました。ワークスペースをリセットして再試行するか、倍率を下げてください。",
+      processErrorMemory:
+        "ブラウザーのメモリ不足、または WebAssembly のメモリアクセス範囲外が発生しました。倍率を下げる、小さい画像を使う、またはページを更新して再試行してください。",
+      processErrorModel:
+        "モデルの読み込みに失敗しました。サイトの models ディレクトリで下記のファイルを確認し、ページを強制更新してください。",
+      processErrorAsset:
+        "バックエンドリソースまたはモデルファイルの読み込みに失敗しました。サーバー上の .js、.wasm、worker、models ファイルが同じビルドのものか確認してください。",
+      processErrorConflict:
+        "別の処理が実行中のため、新しい処理を開始できません。少し待ってから再試行してください。",
+      processErrorInput:
+        "画像サイズ、処理設定、またはメモリバッファーが無効です。処理開始前に安全に停止しました。リセットして画像を選び直してください。",
+      resourceErrorTitle: "リソースの読み込みに失敗しました",
+      resourceErrorText:
+        "{backend} バックエンドを読み込めませんでした。サイトに完全なビルド成果物があるか確認してください。"
+    },
+    notify: {
+      success: "成功",
+      saved: "保存しました",
+      busy: "処理中"
+    }
+  }
+}

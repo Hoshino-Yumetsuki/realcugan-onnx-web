@@ -1,150 +1,123 @@
-# RealCUGAN-ncnn-webassembly
-[中文](https://github.com/lemonno2333/realcugan-ncnn-webassembly/blob/main/README_CN.md)
+# Real-CUGAN ONNX Web
 
-This project uses WebAssembly technology to run the Real-CUGAN model based on ncnn.
-Images are processed locally in the browser with CPU inference and are not
-uploaded to a server.
+[中文](README_CN.md)
 
-This fork keeps the existing ncnn model files in the repository. It does not
-require converting or regenerating models. The build now produces
-`simd-threads`, `simd`, and `basic` WebAssembly backends. The browser selects
-the fastest supported backend and falls back to single-threaded CPU inference
-when pthreads or SharedArrayBuffer are unavailable.
+Anime image upscaling entirely in the browser. Vue 3 + TypeScript + Vite,
+Element Plus, and ONNX Runtime Web with selectable WebGPU or CPU inference.
+No server-side inference or image uploads.
 
-The web UI has also been updated for local image inspection:
+The original CSS, desktop layout and mobile settings drawer are preserved.
+`src/App.vue` composes settings, batch queue, upload and image-comparison components
+from `src/components/`. `src/workspace.ts` owns their shared, typed workspace state;
+`src/i18n.ts` supplies the Chinese, English and Japanese dictionaries.
 
-- selectable SE and Pro Real-CUGAN model sets, including the full upstream SE model set;
-- fixed header/footer tool layout with a larger image workspace;
-- automatic theme color extraction from the uploaded image, inspired by
-  Material Design Monet;
-- animated mesh-gradient processing state generated from the uploaded image's
-  dominant colors;
-- single overlay comparison mode with a viewport-relative split slider;
-- bounded zoom, mouse-wheel zoom, and drag-to-pan preview behavior on desktop;
-- mobile-friendly scrolling layout with touch panning for zoomed previews;
-- reset button for clearing the current image and processing another one.
+## Development
 
-Backend optimization work in this fork includes:
+Node.js 22+ and Yarn 4 (version pinned in `package.json`):
 
-- dedicated fallback Web Workers for the `basic` and `simd` backends, so the UI
-  remains responsive when threaded WASM is unavailable;
-- on-demand model loading from `web/models/` with normal HTTP caching instead of
-  one large Emscripten `.data` bundle;
-- adaptive runtime settings for inference threads and tile size, selected from
-  backend capability, hardware concurrency, device memory, and viewport size;
-- lower peak-memory processing by writing completed tiles directly into the
-  final RGBA output and avoiding full-size intermediate buffers where possible;
-- lower-overhead direct backend callbacks for progress, completion,
-  cancellation, and errors instead of formatted stdout JSON events;
-- benchmarked `-flto` and `emmalloc` builds; neither is enabled by default
-  because the measured trade-offs were not favorable.
-
-[Real-CUGAN](https://github.com/bilibili/ailab/tree/main/Real-CUGAN) is an AI super resolution model for anime images, trained in a million scale anime dataset, using the same architecture as Waifu2x-CUNet. It supports 2x\3x\4x super resolving. The bundled SE models match the upstream `models-se` set: 2x supports conservative, no denoise, and denoise1x/2x/3x; 3x and 4x support conservative, no denoise, and denoise3x.
-
-The code implementation deeply refers to [realcugan-ncnn-vulkan](https://github.com/nihui/realcugan-ncnn-vulkan) and [ncnn-webassembly-nanodet](https://github.com/nihui/ncnn-webassembly-nanodet).
-
-# Usage
-Website： https://realcugan.lemonno.xyz/
-
-Android/iOS: please open in a browser app.
-
-PC/Mac/Linux: recommend using the latest version of Chrome or Firefox.
-
-# How to build
-
-You can download the pre-built version from GitHub Actions, or build it manually following the tutorial below.
-
- 1. Install [emscripten](https://github.com/emscripten-core/emscripten):
- ```shell
- git clone https://github.com/emscripten-core/emsdk.git
-cd emsdk
-./emsdk install 3.1.13
-./emsdk activate 3.1.13
-
-source emsdk/emsdk_env.sh # or add it to .zshrc etc.
- ```
-2. build:
-```shell
-git clone https://github.com/lemonno2333/realcugan-ncnn-webassembly.git
-cd realcugan-ncnn-webassembly
-
-git submodule update --init
-# If this fork does not contain submodule gitlinks, prepare dependencies manually:
-# git clone --depth 1 https://github.com/fmtlib/fmt.git fmt
-# git clone --depth 1 --branch 20220729 https://github.com/Tencent/ncnn.git ncnn
-sh build.sh
-
-go run local_server.go
-```
-open in brower: http://localhost:8000
-
-The default build creates all backends. To build only selected backends:
-
-```shell
-WASM_FEATURES=basic sh build.sh
-WASM_FEATURES="simd simd-threads" sh build.sh
+```sh
+corepack enable
+yarn install --immutable
+yarn dev
 ```
 
-For public deployment, copy the whole `web/` directory after running the build.
-The generated `.wasm`, `.js`, worker files, and `web/models/` model files are
-required by the frontend. Model files are fetched on demand through normal HTTP
-caching instead of being bundled into one `.data` package. COOP/COEP headers are
-still recommended so browsers that support threads can use the faster
-`simd-threads` backend. Without those headers, the page attempts to use a slower
-single-threaded backend.
-
-Before publishing, run:
-
-```shell
-npm run check:deploy
+```sh
+yarn lint
+yarn test
+yarn build
+yarn preview
 ```
 
-See `docs/deployment.md` for recommended COOP/COEP headers, `.wasm` MIME type,
-cache headers, and Nginx/Apache examples.
+`yarn build` checks TypeScript and Vue templates with `vue-tsc` before producing
+`dist/`. The toolchain follows `moejs-wasm`: strict TypeScript, Yarn's node-modules
+linker, Oxlint and Oxfmt.
+`yarn format` formats sources; `yarn format:check` checks formatting.
+TypeScript 7 remains the project compiler. `vue-tsc` uses the separate
+`@typescript/typescript6` compatibility package for its JavaScript compiler API.
 
-When publishing rebuilt runtime, worker, or model assets, bump `APP_VERSION` in
-`web/index.html` so browsers fetch the new `?v=` asset URLs instead of reusing
-stale cached files.
+For real-model browser regression checks, run `yarn dev` and open
+`http://localhost:5173/tests/inference.html`. Add `?backend=wasm` for CPU coverage,
+or `?expect-unavailable` with GPU adapters disabled. The checks cover all 17 bundled
+models, explicit backend switching, cancellation, worker recreation and PNG alpha.
 
-Use ncnn `20220729` for this model set. Newer ncnn versions may compile but can
-produce corrupted output such as colored stripes or noisy blocks with these old
-Real-CUGAN params.
+## Processing
 
-# Performance measurements
+- Choose, drop or paste images; process the queue sequentially in a dedicated worker.
+- Select WebGPU (default) or CPU; the choice is saved locally and locked
+  while processing. WebGPU needs a compatible browser/device over HTTPS or localhost.
+  WebGPU errors do not silently fall back; select CPU explicitly when needed.
+- CPU inference runs in the same dedicated worker using ONNX Runtime WASM, without
+  requiring WebGPU. The official ONNX Runtime host also loads and schedules GPU graphs.
+- Cancel terminates the worker immediately. Completed results remain downloadable;
+  cancelled/failed images can be retried. The next operation creates a fresh worker.
+- Compare original/result with the slider, zoom and pan. Download individual PNGs
+  or a store-only ZIP. Transparency is resized with bilinear interpolation.
+- Chinese, English and Japanese; light, dark and system themes.
 
-After building, measure representative peak-memory workloads with:
+ZIP packaging uses `@zip.js/zip.js` with stored entries, Unicode filenames and
+collision-safe names. Its native entry adds no compression WASM or worker assets.
+`@thi.ng/pixel` supplies alpha-channel extraction and bilinear sampling; `colord`
+handles color conversions, luminance and contrast. Browser APIs handle image
+decoding, canvas display and PNG encoding; only ONNX tile/tensor conversion is custom.
 
-```shell
-node tests/measure-peak-memory.cjs --backend basic
-```
+## Models and image limits
 
-The script also supports `--backend simd`, `--backend simd-threads`, and
-`--json`. See `docs/performance-memory.md` for the current 1080p, 1440p, and 4K
-buffer baseline and measurement notes.
+All 17 ONNX models are stored as ordinary binary files in
+`public/models/c582623ea970dffed0c0afaf971ab43bb3356604/webgpu-f32/` and distributed with the
+repository. They originate from
+[Hoshino-Yumetsuki/Real-CUGAN-ONNX](https://huggingface.co/Hoshino-Yumetsuki/Real-CUGAN-ONNX)
+at the revision pinned in `src/models.ts`. The models total approximately 89.4 MB.
+Vite copies them to `dist/models/`; the browser loads only
+the selected model from the same site and uses its HTTP cache. No runtime
+connection to Hugging Face or a model CDN is required.
 
-Runtime thread and tile-size sweeps can be measured with:
+| Family              | Scale   | Denoising                   |
+| ------------------- | ------- | --------------------------- |
+| SE (`weights_v3`)   | 2×      | conservative, none, 1, 2, 3 |
+| SE (`weights_v3`)   | 3× / 4× | conservative, none, 3       |
+| Pro (`weights_pro`) | 2× / 3× | conservative, none, 3       |
 
-```shell
-node tests/benchmark-runtime-settings.cjs --backend simd-threads
-```
+The graphs take `image` (float32 NCHW RGB in [0,1]) and `alpha` (float32 scalar,
+fixed at 1), and return float32 NCHW RGB. Padding, output cropping and Pro
+normalization remain inside the graph. The updated upstream 3× graphs replace a
+ConvTranspose with Conv, Slice and DepthToSpace.
 
-See `docs/runtime-settings.md` for the adaptive defaults and benchmark matrix.
+The bundled variants remove only the upstream PNG byte-quantization tail, whose
+uint8 Cast is unsupported by WebGPU. JavaScript packs the float output into PNG
+bytes. Sessions specialize input dimensions so shape arithmetic is constant-folded,
+with CPU execution-provider fallback disabled when WebGPU is selected. CPU mode
+explicitly uses the WASM execution provider. Tiles of the same shape share one session
+compilation; switching providers rebuilds the session.
 
-Additional implementation and benchmark notes:
+To regenerate the committed variants, install [uv](https://docs.astral.sh/uv/) and run
+`uv run scripts/prepare-models.py`. This optional preparation step verifies upstream
+SHA-256 hashes and does not run during development, build or browser inference.
 
-- `docs/worker-architecture.md`: worker message protocol and cancellation behavior.
-- `docs/performance-memory.md`: peak-memory measurement notes.
-- `docs/performance-cleanup.md`: `-flto` and `emmalloc` benchmark results.
+Tiles default to 128 input pixels with a 32-pixel context halo. Smaller tiles lower
+memory usage. Real-CUGAN's global SE statistics mean tiled output is not pixel-identical
+to whole-image inference; use full-image mode when that matters and memory permits.
+Output is limited to 16,384 pixels per side and 64 megapixels, with device memory
+potentially imposing a lower limit. Failed runs surface errors rather than returning
+resized placeholders.
 
-Quick smoke checks:
+## Static deployment
 
-```shell
-node tests/backend-smoke.cjs basic
-node tests/backend-smoke.cjs simd
-node tests/backend-smoke.cjs simd-threads
-```
+Publish the **entire `dist/` directory**, including `assets/`, `ort-runtime/` and
+`models/`, on any static HTTP host. Relative build URLs support subdirectory
+hosting. Serve `.wasm` as `application/wasm`, `.mjs` as JavaScript and `.onnx` as
+`application/octet-stream`. Runtime files are copied from the installed ONNX
+Runtime version during the Vite build; keep them with the matching app bundle
+and revalidate `index.html` / `ort-runtime/` when publishing. Versioned model URLs
+may use long-lived caching. All inference resources are served by the deployment;
+no external model host or CORS configuration is required.
+Do not open `index.html` via `file://`.
 
-# Credits
+The previous native build chain, bundled native models and legacy workers have
+been removed. The remaining `.wasm` files belong to the official ONNX Runtime Web
+package: they host GPU graph loading/scheduling and execute models in CPU mode.
 
-This fork is based on the original
-[hanFengSan/realcugan-ncnn-webassembly](https://github.com/hanFengSan/realcugan-ncnn-webassembly).
+## Credits
+
+[Real-CUGAN](https://github.com/bilibili/ailab/tree/main/Real-CUGAN) by Bilibili,
+the ONNX model repository above, and the original
+[web project](https://github.com/hanFengSan/realcugan-ncnn-webassembly).
