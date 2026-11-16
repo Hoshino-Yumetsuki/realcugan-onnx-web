@@ -1,0 +1,5 @@
+# Model weights and raster images are binary; disable text conversion, diffs, and merges.
+*.onnx binary
+*.ico binary
+*.jpg binary
+*.png binary
