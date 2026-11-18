@@ -642,6 +642,7 @@ const WorkspaceController = defineComponent({
     },
 
     closeMobileSettings() {
+      if (!this.mobileSettingsVisible) return
       this.mobileSettingsVisible = false
       this.syncDrawerScrollLock()
       void this.$nextTick(() => {

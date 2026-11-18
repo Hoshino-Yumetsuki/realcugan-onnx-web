@@ -198,7 +198,7 @@ const w = useWorkspace()
             class="eb"
             style="flex: 1"
             :loading="w.wasmLoading"
-            @click="(w.runTestCase(), (w.mobileSettingsVisible = false))"
+            @click="w.runTestCase(); w.closeMobileSettings()"
             ><svg
               class="ic"
               width="14"
@@ -222,7 +222,7 @@ const w = useWorkspace()
             round
             class="eb"
             style="flex: 1"
-            @click="(w.resetWorkspace(), (w.mobileSettingsVisible = false))"
+            @click="w.resetWorkspace(); w.closeMobileSettings()"
             ><svg
               class="ic"
               width="14"
@@ -246,7 +246,7 @@ const w = useWorkspace()
             round
             class="eb-accent save-cta"
             style="flex: 1"
-            @click="(w.saveOutput(), (w.mobileSettingsVisible = false))"
+            @click="w.saveOutput(); w.closeMobileSettings()"
             ><svg
               class="ic"
               width="14"
@@ -269,7 +269,7 @@ const w = useWorkspace()
             round
             class="eb-accent"
             style="flex: 1"
-            @click="(w.downloadAllBatchResults(), (w.mobileSettingsVisible = false))"
+            @click="w.downloadAllBatchResults(); w.closeMobileSettings()"
             ><svg
               class="ic"
               width="14"
@@ -294,7 +294,7 @@ const w = useWorkspace()
             style="flex: 1"
             :loading="w.isCancelling"
             :disabled="w.isCancelling"
-            @click="(w.stopProcess(), (w.mobileSettingsVisible = false))"
+            @click="w.stopProcess(); w.closeMobileSettings()"
             ><svg
               class="ic"
               width="14"
