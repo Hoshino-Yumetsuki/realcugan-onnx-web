@@ -37,6 +37,8 @@ JavaScript 编译器 API，不要求降级项目编译器。
 适配器后添加 `?expect-unavailable` 测试无 WebGPU 环境。覆盖全部 17 个内置模型、
 显式后端切换、取消后重建 Worker 和 PNG 透明通道。
 
+安装 Chrome 并启动 `yarn dev` 后，运行 `uv run tests/mobile-ui.py` 可验证滚动后的设置抽屉操作和三语介绍切换。
+
 ## 使用方式
 
 - 选择、拖放或粘贴图片，在独立 Worker 中按队列顺序处理。

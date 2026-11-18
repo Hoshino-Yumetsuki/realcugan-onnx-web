@@ -40,6 +40,9 @@ For real-model browser regression checks, run `yarn dev` and open
 or `?expect-unavailable` with GPU adapters disabled. The checks cover all 17 bundled
 models, explicit backend switching, cancellation, worker recreation and PNG alpha.
 
+With `yarn dev` running and Chrome installed, `uv run tests/mobile-ui.py` checks the
+settings drawer after scrolling and switches the introduction between all three languages.
+
 ## Processing
 
 - Choose, drop or paste images; process the queue sequentially in a dedicated worker.
