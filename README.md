@@ -6,7 +6,7 @@ Anime image upscaling entirely in the browser. Vue 3 + TypeScript + Vite,
 Element Plus, and ONNX Runtime Web with selectable WebGPU or CPU inference.
 No server-side inference or image uploads.
 
-The original CSS, desktop layout and mobile settings drawer are preserved.
+On mobile, the settings button stays accessible when you scroll down to the introduction.
 `src/App.vue` composes settings, batch queue, upload and image-comparison components
 from `src/components/`. `src/workspace.ts` owns their shared, typed workspace state;
 `src/i18n.ts` supplies the Chinese, English and Japanese dictionaries.

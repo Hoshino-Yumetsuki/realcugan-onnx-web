@@ -1359,6 +1359,11 @@ button:active,
     background-attachment: scroll;
   }
 
+  /* Keep fixed workspace controls above the sibling .seo-content while scrolling. */
+  #app {
+    z-index: 3;
+  }
+
   .ambient-proc,
   .grain-svg {
     display: none;

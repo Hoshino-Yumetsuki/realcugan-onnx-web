@@ -5,7 +5,7 @@
 完全在浏览器中运行的动漫图片超分辨率工具。使用 Vue 3、TypeScript、Vite、
 Element Plus 和 ONNX Runtime Web，可选择 WebGPU 或 CPU（WASM）推理。无需推理服务器，不上传图片。
 
-保留原版 CSS、桌面布局和移动端设置抽屉，不重新设计界面。`src/App.vue` 组合
+移动端滚动到页面下方的介绍区后，仍可点按底部的「参数设置」打开设置抽屉。`src/App.vue` 组合
 `src/components/` 下的设置、批量队列、上传与图片对比组件；`src/workspace.ts`
 管理类型化共享状态，`src/i18n.ts` 提供中、英、日三语词典。
 
